@@ -1,0 +1,1274 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#1a3a5c" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="P&ID Scanner" />
+  <meta name="description" content="ระบบสแกนและระบุสัญลักษณ์ทางวิศวกรรม P&ID" />
+  <title>P&ID Symbol Scanner</title>
+  <link rel="manifest" href="manifest.json" />
+  <link rel="apple-touch-icon" href="icons/icon-192.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet" />
+
+  <style>
+    /* ══════════════════════════════════════════════════
+       Design System — Professional Engineering UI
+       Light theme · Clean · High readability
+    ══════════════════════════════════════════════════ */
+    :root {
+      --bg:           #f4f6f9;
+      --surface:      #ffffff;
+      --surface2:     #eef1f6;
+      --surface3:     #e4e9f0;
+      --blue-900:     #0d2340;
+      --blue-800:     #1a3a5c;
+      --blue-700:     #1e4976;
+      --blue-600:     #2563a8;
+      --blue-400:     #4a90d9;
+      --blue-100:     #dbeafe;
+      --blue-50:      #eff6ff;
+      --success:      #15803d;
+      --success-bg:   #f0fdf4;
+      --success-bd:   #bbf7d0;
+      --warn:         #b45309;
+      --warn-bg:      #fffbeb;
+      --warn-bd:      #fde68a;
+      --error:        #dc2626;
+      --error-bg:     #fef2f2;
+      --error-bd:     #fecaca;
+      --text-primary:   #0f172a;
+      --text-secondary: #334155;
+      --text-muted:     #64748b;
+      --text-faint:     #94a3b8;
+      --border:       #cbd5e1;
+      --border-light: #e2e8f0;
+      --font-th:    'IBM Plex Sans Thai', sans-serif;
+      --font-en:    'IBM Plex Sans', sans-serif;
+      --font-mono:  'IBM Plex Mono', monospace;
+      --r-sm:  4px;
+      --r:     8px;
+      --r-lg:  12px;
+      --r-xl:  16px;
+      --shadow-sm:  0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.06);
+      --shadow:     0 4px 12px rgba(0,0,0,0.08), 0 2px 4px rgba(0,0,0,0.05);
+      --shadow-lg:  0 10px 30px rgba(0,0,0,0.12), 0 4px 8px rgba(0,0,0,0.06);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      height: 100%;
+      overflow: hidden;
+      background: var(--bg);
+      color: var(--text-primary);
+      font-family: var(--font-th);
+      -webkit-font-smoothing: antialiased;
+      user-select: none;
+    }
+
+    /* ── App Shell ── */
+    #app {
+      display: grid;
+      grid-template-rows: 56px 1fr auto;
+      height: 100dvh;
+      max-width: 960px;
+      margin: 0 auto;
+      background: var(--surface);
+      box-shadow: var(--shadow-lg);
+    }
+
+    /* ── Header ── */
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 20px;
+      background: var(--blue-800);
+      position: relative;
+      z-index: 10;
+    }
+    .header-left { display: flex; align-items: center; gap: 12px; }
+    .logo-icon {
+      width: 32px; height: 32px;
+      background: rgba(255,255,255,0.15);
+      border-radius: var(--r-sm);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 16px;
+    }
+    .logo-text { display: flex; flex-direction: column; }
+    .logo-title { font-family: var(--font-en); font-size: 14px; font-weight: 600; color: #fff; letter-spacing: 0.5px; line-height: 1; }
+    .logo-sub   { font-family: var(--font-th); font-size: 10px; color: rgba(255,255,255,0.6); margin-top: 2px; line-height: 1; }
+
+    .status-pill {
+      display: flex; align-items: center; gap: 6px;
+      padding: 5px 12px; border-radius: 20px;
+      background: rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.15);
+    }
+    .status-dot { width: 7px; height: 7px; border-radius: 50%; background: rgba(255,255,255,0.4); transition: background 0.3s; }
+    .status-dot.ready    { background: #4ade80; box-shadow: 0 0 6px #4ade8088; }
+    .status-dot.scanning { background: #fbbf24; animation: blink 0.7s ease-in-out infinite; }
+    .status-dot.done     { background: #60a5fa; }
+    .status-dot.error    { background: #f87171; }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.3} }
+    .status-label { font-family: var(--font-en); font-size: 11px; font-weight: 500; color: rgba(255,255,255,0.85); letter-spacing: 0.5px; }
+
+    /* ── Main viewport ── */
+    main { position: relative; overflow: hidden; background: #111; }
+    #video { width: 100%; height: 100%; object-fit: cover; display: block; }
+    #capture-canvas { display: none; }
+
+    /* ── SVG Overlay ── */
+    #overlay { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+    #roi-rect { fill: rgba(255,255,255,0.03); stroke: #ffffff; stroke-width: 1.5; transition: stroke 0.3s; }
+    #roi-rect.scanning { stroke: #fbbf24; }
+    #roi-rect.done     { stroke: #4ade80; }
+    #roi-rect.error    { stroke: #f87171; }
+    .corner { stroke-width: 3; stroke-linecap: square; transition: stroke 0.3s; }
+    #guide-text { font-family: var(--font-th); font-size: 12px; fill: rgba(255,255,255,0.85); transition: fill 0.3s; font-weight: 500; }
+    #guide-bg { fill: rgba(0,0,0,0.45); rx: 4; transition: fill 0.3s; }
+    #sweep-line { stroke: #fbbf24; stroke-width: 2; opacity: 0; filter: drop-shadow(0 0 3px #fbbf24); }
+    #sweep-line.active { opacity: 0.8; animation: sweep 1.4s ease-in-out infinite; }
+    @keyframes sweep { 0% { transform: translateY(0px); } 100% { transform: translateY(var(--roi-h, 200px)); } }
+
+    /* ── Info Bar ── */
+    #info-bar {
+      position: absolute; top: 0; left: 0; right: 0;
+      padding: 10px 16px;
+      background: linear-gradient(to bottom, rgba(0,0,0,0.5), transparent);
+      display: flex; align-items: center; justify-content: space-between;
+      z-index: 5;
+    }
+    .info-badge { font-family: var(--font-mono); font-size: 10px; color: rgba(255,255,255,0.7); letter-spacing: 0.5px; }
+
+    /* ── Upload overlay button (bottom-left of camera) ── */
+    #upload-overlay-btn {
+      position: absolute; bottom: 12px; left: 12px;
+      width: 44px; height: 44px;
+      background: rgba(0,0,0,0.55);
+      border: 1.5px solid rgba(255,255,255,0.25);
+      border-radius: var(--r);
+      color: #fff; font-size: 20px;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; z-index: 10;
+      transition: background 0.15s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    #upload-overlay-btn:hover { background: rgba(0,0,0,0.75); }
+
+    /* ── Zoom control ── */
+    #zoom-wrap {
+      position: absolute; bottom: 12px; right: 12px;
+      display: flex; flex-direction: column; gap: 4px;
+      z-index: 10;
+    }
+    .zoom-btn {
+      width: 36px; height: 36px;
+      background: rgba(0,0,0,0.55);
+      border: 1.5px solid rgba(255,255,255,0.25);
+      border-radius: var(--r-sm);
+      color: #fff; font-size: 18px; font-weight: 600;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; line-height: 1;
+      -webkit-tap-highlight-color: transparent;
+    }
+    #zoom-label {
+      font-family: var(--font-mono); font-size: 10px;
+      color: rgba(255,255,255,0.7); text-align: center; letter-spacing: 0.5px;
+    }
+
+    /* ── Result Drawer (slides up) ── */
+    #result-drawer {
+      position: absolute; bottom: 0; left: 0; right: 0;
+      background: var(--surface);
+      border-top: 3px solid var(--blue-600);
+      border-radius: var(--r-xl) var(--r-xl) 0 0;
+      transform: translateY(100%);
+      transition: transform 0.4s cubic-bezier(0.32, 0.72, 0, 1);
+      z-index: 20; max-height: 72%;
+      overflow: hidden; display: flex; flex-direction: column;
+      box-shadow: 0 -4px 24px rgba(0,0,0,0.18);
+    }
+    #result-drawer.open { transform: translateY(0); }
+    .drawer-grip { display: flex; justify-content: center; padding: 10px 0 6px; flex-shrink: 0; }
+    .drawer-grip-bar { width: 36px; height: 4px; background: var(--border); border-radius: 2px; }
+
+    /* ── Drawer Tabs ── */
+    .drawer-tabs {
+      display: flex; border-bottom: 1px solid var(--border-light);
+      flex-shrink: 0;
+    }
+    .drawer-tab {
+      flex: 1; padding: 10px 0;
+      font-family: var(--font-en); font-size: 12px; font-weight: 600;
+      letter-spacing: 0.5px; text-transform: uppercase;
+      color: var(--text-muted); background: none; border: none;
+      border-bottom: 2px solid transparent;
+      cursor: pointer; transition: all 0.15s;
+    }
+    .drawer-tab.active { color: var(--blue-700); border-bottom-color: var(--blue-600); }
+
+    /* ── Tab panels ── */
+    .tab-panel { display: none; flex: 1; overflow-y: auto; }
+    .tab-panel.active { display: flex; flex-direction: column; }
+
+    /* Result strip */
+    .result-strip { padding: 14px 20px; border-bottom: 1px solid var(--border-light); flex-shrink: 0; }
+    .result-meta { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; }
+    .result-meta-tag {
+      font-family: var(--font-en); font-size: 10px; font-weight: 500;
+      letter-spacing: 1px; text-transform: uppercase;
+      color: var(--blue-600); background: var(--blue-50);
+      border: 1px solid var(--blue-100); padding: 2px 8px; border-radius: 20px;
+    }
+    .result-meta-std { font-family: var(--font-mono); font-size: 10px; color: var(--text-muted); }
+    .result-name-row { display: flex; align-items: flex-start; gap: 14px; }
+    .result-thumb {
+      width: 68px; height: 54px; object-fit: cover;
+      border-radius: var(--r-sm); border: 1px solid var(--border);
+      flex-shrink: 0; background: var(--surface2);
+    }
+    .result-name { font-family: var(--font-en); font-size: 19px; font-weight: 600; color: var(--text-primary); line-height: 1.25; word-break: break-word; padding-top: 2px; }
+
+    /* Standard code pill */
+    .std-code-row { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+    .std-pill {
+      font-family: var(--font-mono); font-size: 10px; font-weight: 500;
+      background: var(--surface2); border: 1px solid var(--border);
+      color: var(--text-secondary); padding: 2px 8px; border-radius: 4px;
+    }
+
+    .result-body { padding: 14px 20px 20px; flex: 1; }
+    .result-section-label {
+      font-family: var(--font-en); font-size: 10px; font-weight: 600;
+      letter-spacing: 1.5px; text-transform: uppercase; color: var(--text-muted); margin-bottom: 8px;
+    }
+    .result-desc { font-family: var(--font-th); font-size: 15px; color: var(--text-secondary); line-height: 1.8; }
+
+    /* ── History Panel ── */
+    #history-list { padding: 12px 16px; display: flex; flex-direction: column; gap: 10px; }
+    .history-empty {
+      text-align: center; padding: 40px 20px;
+      color: var(--text-faint); font-size: 13px;
+    }
+    .history-item {
+      display: flex; align-items: center; gap: 12px;
+      padding: 10px 12px;
+      background: var(--surface2); border: 1px solid var(--border-light);
+      border-radius: var(--r); cursor: pointer;
+      transition: background 0.15s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .history-item:hover { background: var(--surface3); }
+    .history-thumb {
+      width: 52px; height: 40px; object-fit: cover;
+      border-radius: var(--r-sm); border: 1px solid var(--border); flex-shrink: 0;
+    }
+    .history-info { flex: 1; min-width: 0; }
+    .history-name { font-family: var(--font-en); font-size: 13px; font-weight: 600; color: var(--text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .history-time { font-family: var(--font-mono); font-size: 10px; color: var(--text-muted); margin-top: 2px; }
+    .history-clear {
+      margin: 0 16px 12px; padding: 8px;
+      background: none; border: 1px solid var(--border);
+      border-radius: var(--r-sm); font-size: 12px; color: var(--text-muted);
+      cursor: pointer; width: calc(100% - 32px);
+    }
+    .history-clear:hover { background: var(--error-bg); border-color: var(--error-bd); color: var(--error); }
+
+    /* Error block */
+    .error-block { display: flex; align-items: flex-start; gap: 12px; padding: 14px 16px; background: var(--error-bg); border: 1px solid var(--error-bd); border-radius: var(--r); }
+    .error-icon { font-size: 18px; flex-shrink: 0; margin-top: 1px; }
+    .error-title { font-size: 13px; font-weight: 600; color: var(--error); margin-bottom: 4px; }
+    .error-msg { font-size: 13px; color: #7f1d1d; line-height: 1.5; }
+
+    /* ── API Key Modal ── */
+    #key-modal {
+      position: fixed; inset: 0;
+      background: rgba(15,23,42,0.7);
+      display: flex; align-items: center; justify-content: center;
+      z-index: 100; padding: 24px;
+      backdrop-filter: blur(6px);
+    }
+    #key-modal.hidden { display: none; }
+    .modal-card {
+      background: var(--surface); border-radius: var(--r-xl);
+      padding: 28px 24px 24px; width: 100%; max-width: 400px;
+      box-shadow: var(--shadow-lg);
+    }
+    .modal-header { display: flex; align-items: center; gap: 12px; margin-bottom: 20px; }
+    .modal-icon {
+      width: 44px; height: 44px; background: var(--blue-50);
+      border: 1px solid var(--blue-100); border-radius: var(--r);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px; flex-shrink: 0;
+    }
+    .modal-title { font-family: var(--font-en); font-size: 18px; font-weight: 600; color: var(--text-primary); line-height: 1.2; }
+    .modal-sub { font-size: 12px; color: var(--text-muted); margin-top: 2px; }
+    .modal-divider { height: 1px; background: var(--border-light); margin: 0 0 20px; }
+
+    /* Provider toggle */
+    .provider-row { display: flex; gap: 8px; margin-bottom: 16px; }
+    .provider-btn {
+      flex: 1; padding: 8px 4px;
+      border: 1.5px solid var(--border); border-radius: var(--r-sm);
+      background: var(--surface); font-family: var(--font-en); font-size: 12px; font-weight: 600;
+      color: var(--text-muted); cursor: pointer; transition: all 0.15s; text-align: center;
+    }
+    .provider-btn.active { border-color: var(--blue-600); color: var(--blue-700); background: var(--blue-50); }
+
+    .field-label { display: block; font-family: var(--font-en); font-size: 11px; font-weight: 600; letter-spacing: 1px; text-transform: uppercase; color: var(--text-secondary); margin-bottom: 6px; }
+    input[type="password"], input[type="text"] {
+      width: 100%; padding: 11px 14px;
+      background: var(--surface); border: 1.5px solid var(--border);
+      border-radius: var(--r); color: var(--text-primary);
+      font-family: var(--font-mono); font-size: 13px; outline: none;
+      transition: border-color 0.2s, box-shadow 0.2s;
+    }
+    input:focus { border-color: var(--blue-600); box-shadow: 0 0 0 3px rgba(37,99,168,0.12); }
+    input.invalid { border-color: var(--error); box-shadow: 0 0 0 3px rgba(220,38,38,0.1); }
+    .field-hint { font-size: 12px; color: var(--text-muted); margin-top: 6px; margin-bottom: 20px; line-height: 1.5; }
+    .field-hint a { color: var(--blue-600); text-decoration: none; font-weight: 500; }
+    .field-error { font-size: 12px; color: var(--error); margin-top: 5px; display: none; }
+    .field-error.show { display: block; }
+
+    /* Security notice */
+    .security-notice {
+      display: flex; align-items: flex-start; gap: 8px;
+      padding: 10px 12px; background: var(--warn-bg);
+      border: 1px solid var(--warn-bd); border-radius: var(--r-sm);
+      margin-bottom: 16px;
+    }
+    .security-notice-icon { font-size: 14px; flex-shrink: 0; margin-top: 1px; }
+    .security-notice-text { font-size: 11px; color: var(--warn); line-height: 1.5; }
+
+    /* ── Buttons ── */
+    .btn {
+      display: flex; align-items: center; justify-content: center; gap: 8px;
+      width: 100%; padding: 12px 20px; border: none; border-radius: var(--r);
+      font-family: var(--font-th); font-size: 15px; font-weight: 500;
+      cursor: pointer; transition: all 0.15s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    .btn-primary { background: var(--blue-700); color: #fff; }
+    .btn-primary:hover { background: var(--blue-800); }
+    .btn-primary:active { transform: scale(0.985); background: var(--blue-900); }
+    .btn-primary:disabled { opacity: 0.45; cursor: not-allowed; transform: none; }
+
+    /* ── Action Bar ── */
+    #action-bar {
+      background: var(--surface);
+      border-top: 1px solid var(--border-light);
+      padding: 12px 16px;
+      padding-bottom: max(12px, env(safe-area-inset-bottom));
+      display: flex; gap: 10px; align-items: center;
+    }
+    #scan-btn {
+      flex: 1; padding: 14px 20px;
+      background: var(--blue-700); color: #fff; border: none; border-radius: var(--r);
+      font-family: var(--font-en); font-size: 14px; font-weight: 600;
+      letter-spacing: 1.5px; text-transform: uppercase;
+      cursor: pointer; transition: all 0.15s;
+      -webkit-tap-highlight-color: transparent;
+    }
+    #scan-btn:hover  { background: var(--blue-800); }
+    #scan-btn:active { transform: scale(0.985); background: var(--blue-900); }
+    #scan-btn:disabled { background: var(--surface3); color: var(--text-faint); cursor: not-allowed; transform: none; }
+    #scan-btn.scanning { background: var(--warn); cursor: not-allowed; }
+    .icon-btn {
+      width: 48px; height: 48px;
+      background: var(--surface2); border: 1px solid var(--border);
+      border-radius: var(--r); color: var(--text-secondary); font-size: 18px;
+      cursor: pointer; display: flex; align-items: center; justify-content: center;
+      transition: all 0.15s; -webkit-tap-highlight-color: transparent; flex-shrink: 0;
+    }
+    .icon-btn:hover  { background: var(--surface3); }
+    .icon-btn:active { background: var(--border); transform: scale(0.95); }
+
+    /* ── Camera Permission ── */
+    #cam-permission {
+      position: absolute; inset: 0; display: flex; flex-direction: column;
+      align-items: center; justify-content: center; gap: 16px;
+      background: var(--bg); z-index: 5; padding: 32px;
+    }
+    #cam-permission.hidden { display: none; }
+    .perm-card {
+      background: var(--surface); border: 1px solid var(--border);
+      border-radius: var(--r-xl); padding: 32px 28px;
+      text-align: center; max-width: 320px; width: 100%;
+      box-shadow: var(--shadow);
+    }
+    .perm-icon-wrap {
+      width: 64px; height: 64px; background: var(--blue-50);
+      border: 1px solid var(--blue-100); border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 28px; margin: 0 auto 16px;
+    }
+    .perm-title { font-family: var(--font-en); font-size: 16px; font-weight: 600; color: var(--text-primary); margin-bottom: 8px; }
+    .perm-desc  { font-size: 13px; color: var(--text-muted); line-height: 1.6; margin-bottom: 20px; }
+
+    /* ── Spinner ── */
+    .spinner { width: 18px; height: 18px; border: 2px solid rgba(255,255,255,0.35); border-top-color: #fff; border-radius: 50%; animation: spin 0.65s linear infinite; display: inline-block; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* ── Install Banner ── */
+    #install-banner {
+      position: fixed; bottom: 80px; left: 12px; right: 12px;
+      background: var(--surface); border: 1px solid var(--border);
+      border-left: 4px solid var(--blue-600); border-radius: var(--r-lg);
+      padding: 14px 16px; display: flex; align-items: center; gap: 12px;
+      z-index: 50; box-shadow: var(--shadow);
+      transform: translateY(120%);
+      transition: transform 0.4s cubic-bezier(0.32, 0.72, 0, 1);
+    }
+    #install-banner.show { transform: translateY(0); }
+    .install-text { flex: 1; font-size: 13px; color: var(--text-secondary); line-height: 1.4; }
+    .install-text strong { color: var(--blue-700); font-weight: 600; }
+    #install-btn { background: var(--blue-700); color: #fff; border: none; border-radius: var(--r-sm); padding: 7px 14px; font-size: 12px; font-weight: 600; cursor: pointer; white-space: nowrap; font-family: var(--font-en); }
+    #dismiss-install { background: none; border: none; color: var(--text-faint); font-size: 16px; cursor: pointer; padding: 4px; line-height: 1; }
+
+    /* ── Hidden file input ── */
+    #file-input { display: none; }
+
+    @media (min-width: 600px) {
+      #result-drawer { max-height: 55%; }
+    }
+  </style>
+</head>
+<body>
+
+<div id="app">
+
+  <!-- ── Header ── -->
+  <header>
+    <div class="header-left">
+      <div class="logo-icon">⚙️</div>
+      <div class="logo-text">
+        <div class="logo-title">P&amp;ID Symbol Scanner</div>
+        <div class="logo-sub">ระบบระบุสัญลักษณ์ทางวิศวกรรม</div>
+      </div>
+    </div>
+    <div class="status-pill">
+      <div class="status-dot idle" id="status-dot"></div>
+      <span class="status-label" id="status-label">OFFLINE</span>
+    </div>
+  </header>
+
+  <!-- ── Camera View ── -->
+  <main id="main-view">
+
+    <!-- Camera permission -->
+    <div id="cam-permission">
+      <div class="perm-card">
+        <div class="perm-icon-wrap">📷</div>
+        <div class="perm-title">Camera Access Required</div>
+        <div class="perm-desc">กรุณาอนุญาตการใช้กล้องเพื่อเริ่มสแกนสัญลักษณ์ P&amp;ID</div>
+        <button class="btn btn-primary" id="perm-btn">อนุญาตและเปิดกล้อง</button>
+      </div>
+    </div>
+
+    <!-- Video -->
+    <video id="video" autoplay playsinline muted></video>
+    <canvas id="capture-canvas"></canvas>
+
+    <!-- Info bar -->
+    <div id="info-bar">
+      <span class="info-badge" id="info-left">IEC · IEEE · ISA Standards</span>
+      <span class="info-badge" id="info-model">GPT-4o Vision</span>
+    </div>
+
+    <!-- Upload button (bottom-left) -->
+    <button id="upload-overlay-btn" title="อัปโหลดรูปภาพ">🖼</button>
+    <input type="file" id="file-input" accept="image/*" />
+
+    <!-- Zoom controls (bottom-right) -->
+    <div id="zoom-wrap">
+      <button class="zoom-btn" id="zoom-in-btn">＋</button>
+      <div id="zoom-label">1×</div>
+      <button class="zoom-btn" id="zoom-out-btn">－</button>
+    </div>
+
+    <!-- SVG overlay -->
+    <svg id="overlay" xmlns="http://www.w3.org/2000/svg">
+      <rect id="roi-rect" rx="2" />
+      <g id="corners">
+        <line id="c-tl-h" class="corner" />
+        <line id="c-tl-v" class="corner" />
+        <line id="c-tr-h" class="corner" />
+        <line id="c-tr-v" class="corner" />
+        <line id="c-bl-h" class="corner" />
+        <line id="c-bl-v" class="corner" />
+        <line id="c-br-h" class="corner" />
+        <line id="c-br-v" class="corner" />
+      </g>
+      <line id="sweep-line" x1="0" y1="0" x2="0" y2="0" />
+      <rect id="guide-bg" />
+      <text id="guide-text" text-anchor="middle">วางสัญลักษณ์ในกรอบ</text>
+    </svg>
+
+    <!-- Result drawer -->
+    <div id="result-drawer">
+      <div class="drawer-grip"><div class="drawer-grip-bar"></div></div>
+      <div class="drawer-tabs">
+        <button class="drawer-tab active" id="tab-result-btn">ผลการสแกน</button>
+        <button class="drawer-tab" id="tab-history-btn">ประวัติ (<span id="history-count">0</span>)</button>
+      </div>
+      <!-- Result panel -->
+      <div class="tab-panel active" id="tab-result">
+        <div id="result-content"></div>
+      </div>
+      <!-- History panel -->
+      <div class="tab-panel" id="tab-history">
+        <div id="history-list">
+          <div class="history-empty">ยังไม่มีประวัติการสแกน</div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- ── Action Bar ── -->
+  <div id="action-bar">
+    <button class="icon-btn" id="key-btn" title="ตั้งค่า API Key">🔑</button>
+    <button id="scan-btn" disabled>SCAN SYMBOL</button>
+    <button class="icon-btn" id="reset-btn" title="รีเซ็ต">↺</button>
+  </div>
+
+</div>
+
+<!-- ── API Key Modal ── -->
+<div id="key-modal">
+  <div class="modal-card">
+    <div class="modal-header">
+      <div class="modal-icon">🔐</div>
+      <div>
+        <div class="modal-title">API Configuration</div>
+        <div class="modal-sub">ตั้งค่า AI Provider สำหรับการวิเคราะห์</div>
+      </div>
+    </div>
+    <div class="modal-divider"></div>
+
+    <!-- Provider selector -->
+    <div class="provider-row">
+      <button class="provider-btn active" id="prov-openai">OpenAI GPT-4o</button>
+      <button class="provider-btn" id="prov-anthropic">Anthropic Claude</button>
+    </div>
+
+    <div class="security-notice">
+      <div class="security-notice-icon">⚠️</div>
+      <div class="security-notice-text">API Key ถูกเก็บในอุปกรณ์เท่านั้น ไม่ได้ส่งไปเซิร์ฟเวอร์ใด นอกจาก provider ที่เลือก</div>
+    </div>
+
+    <label class="field-label" for="key-input">API Key</label>
+    <input type="password" id="key-input" placeholder="sk-..." autocomplete="off" spellcheck="false" />
+    <div class="field-error" id="key-error">รูปแบบไม่ถูกต้อง — กรุณาตรวจสอบ Key อีกครั้ง</div>
+    <div class="field-hint" id="key-hint">
+      รับ API Key ได้ที่
+      <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener" id="key-link">platform.openai.com</a>
+    </div>
+    <button class="btn btn-primary" id="save-key-btn">บันทึกและเริ่มใช้งาน</button>
+  </div>
+</div>
+
+<!-- ── PWA Install Banner ── -->
+<div id="install-banner">
+  <div>📲</div>
+  <div class="install-text">
+    <strong>ติดตั้งแอปบนหน้าจอหลัก</strong><br>
+    ใช้งานได้เหมือนแอปปกติ แม้ไม่มีเน็ต
+  </div>
+  <button id="install-btn">ติดตั้ง</button>
+  <button id="dismiss-install">✕</button>
+</div>
+
+<script>
+// ════════════════════════════════════════════════════════
+//  P&ID Symbol Scanner — PWA v2 (All improvements)
+//  Fixes: ROI mirror bug, upload mode, history, zoom,
+//         provider toggle, security notice, better prompt
+// ════════════════════════════════════════════════════════
+
+const $ = id => document.getElementById(id);
+
+// ── State ──────────────────────────────────────────────
+const State = { IDLE:'idle', READY:'ready', SCANNING:'scanning', DONE:'done', ERROR:'error' };
+let appState  = State.IDLE;
+let stream    = null;
+let deferredInstall = null;
+let currentFacingMode = 'environment'; // track which camera is active
+let zoomLevel = 1;
+let zoomTrack = null; // MediaStreamTrack for zoom capability
+let scanHistory = []; // [{ name, desc, thumb, stdCodes, time }]
+let activeProvider = 'openai'; // 'openai' | 'anthropic'
+let uploadedImageB64 = null; // set when user uploads an image instead of using camera
+
+// ── Element refs ───────────────────────────────────────
+const video          = $('video');
+const canvas         = $('capture-canvas');
+const ctx            = canvas.getContext('2d');
+const overlay        = $('overlay');
+const roiRect        = $('roi-rect');
+const guideText      = $('guide-text');
+const guideBg        = $('guide-bg');
+const sweepLine      = $('sweep-line');
+const statusDot      = $('status-dot');
+const statusLabel    = $('status-label');
+const scanBtn        = $('scan-btn');
+const resetBtn       = $('reset-btn');
+const keyBtn         = $('key-btn');
+const resultDrawer   = $('result-drawer');
+const resultContent  = $('result-content');
+const keyModal       = $('key-modal');
+const keyInput       = $('key-input');
+const keyError       = $('key-error');
+const saveKeyBtn     = $('save-key-btn');
+const permDiv        = $('cam-permission');
+const permBtn        = $('perm-btn');
+const installBanner  = $('install-banner');
+const uploadBtn      = $('upload-overlay-btn');
+const fileInput      = $('file-input');
+const zoomInBtn      = $('zoom-in-btn');
+const zoomOutBtn     = $('zoom-out-btn');
+const zoomLabel      = $('zoom-label');
+const historyList    = $('history-list');
+const historyCount   = $('history-count');
+const tabResultBtn   = $('tab-result-btn');
+const tabHistoryBtn  = $('tab-history-btn');
+const tabResult      = $('tab-result');
+const tabHistory     = $('tab-history');
+const infoModel      = $('info-model');
+
+// ── ROI config ─────────────────────────────────────────
+let roi = { x:0, y:0, w:0, h:0 };
+const ROI_W_FRAC  = 0.70;
+const ROI_H_FRAC  = 0.55;
+const CORNER_LEN  = 20;
+const CORNER_W    = 2.5;
+
+// ── Storage keys ───────────────────────────────────────
+const KEY_OPENAI    = 'pid_api_key';
+const KEY_ANTHROPIC = 'pid_api_key_anthropic';
+const KEY_HISTORY   = 'pid_history';
+const KEY_PROVIDER  = 'pid_provider';
+
+const getKey = (prov) => localStorage.getItem(prov === 'openai' ? KEY_OPENAI : KEY_ANTHROPIC) || '';
+const saveKey = (prov, k) => localStorage.setItem(prov === 'openai' ? KEY_OPENAI : KEY_ANTHROPIC, k.trim());
+
+// ── Prompts ────────────────────────────────────────────
+const SYSTEM_PROMPT = `You are an expert engineer specializing in Piping and Instrumentation Diagrams (P&ID) and electrical/instrumentation engineering symbols.
+
+When given an image of an engineering symbol, respond ONLY in this exact JSON format (no markdown, no extra text):
+{
+  "name": "Standard Symbol Name (English)",
+  "nameTH": "ชื่อภาษาไทย",
+  "stdCodes": ["ISA 5.1", "IEC 60617"],
+  "description": "คำอธิบาย 2-3 ประโยคในภาษาไทย บอกหน้าที่และการใช้งานของสัญลักษณ์นี้",
+  "category": "Instrument|Valve|Line|Equipment|Signal|Other"
+}
+
+Use international standards: ISA 5.1, IEC 60617, IEEE, ISO 10628. If not a P&ID symbol, still identify what it is. Always respond with valid JSON only.`;
+
+// ════════════════════════════════════════════════════
+//  INIT
+// ════════════════════════════════════════════════════
+function init() {
+  activeProvider = localStorage.getItem(KEY_PROVIDER) || 'openai';
+  setProvider(activeProvider, false);
+
+  // Load history
+  try {
+    const saved = localStorage.getItem(KEY_HISTORY);
+    if (saved) scanHistory = JSON.parse(saved);
+  } catch(e) {}
+  renderHistory();
+
+  if (getKey(activeProvider)) {
+    keyModal.classList.add('hidden');
+    startCamera();
+  }
+  setupListeners();
+  setupPWA();
+}
+
+// ════════════════════════════════════════════════════
+//  PROVIDER
+// ════════════════════════════════════════════════════
+function setProvider(prov, updateInput = true) {
+  activeProvider = prov;
+  localStorage.setItem(KEY_PROVIDER, prov);
+  $('prov-openai').classList.toggle('active', prov === 'openai');
+  $('prov-anthropic').classList.toggle('active', prov === 'anthropic');
+
+  if (prov === 'openai') {
+    if (updateInput) keyInput.placeholder = 'sk-...';
+    $('key-hint').innerHTML = 'รับ API Key ได้ที่ <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener">platform.openai.com</a>';
+    infoModel.textContent = 'GPT-4o Vision';
+  } else {
+    if (updateInput) keyInput.placeholder = 'sk-ant-...';
+    $('key-hint').innerHTML = 'รับ API Key ได้ที่ <a href="https://console.anthropic.com/settings/keys" target="_blank" rel="noopener">console.anthropic.com</a>';
+    infoModel.textContent = 'Claude Vision';
+  }
+  if (updateInput) keyInput.value = getKey(prov);
+}
+
+// ════════════════════════════════════════════════════
+//  CAMERA
+// ════════════════════════════════════════════════════
+async function startCamera() {
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({
+      video: { facingMode: { ideal: 'environment' }, width: { ideal: 1920 }, height: { ideal: 1080 } },
+      audio: false
+    });
+    video.srcObject = stream;
+
+    // Check facing mode actually used
+    const track = stream.getVideoTracks()[0];
+    const settings = track.getSettings();
+    currentFacingMode = settings.facingMode || 'environment';
+    zoomTrack = track;
+
+    // Mirror video only for front camera
+    video.style.transform = currentFacingMode === 'user' ? 'scaleX(-1)' : 'none';
+
+    video.onloadedmetadata = () => {
+      permDiv.classList.add('hidden');
+      setState(State.READY);
+      scanBtn.disabled = false;
+      resizeROI();
+      // Hide zoom if not supported
+      const caps = track.getCapabilities ? track.getCapabilities() : {};
+      $('zoom-wrap').style.display = caps.zoom ? 'flex' : 'none';
+    };
+  } catch (err) {
+    console.error('Camera:', err);
+    permDiv.querySelector('.perm-desc').textContent = 'ไม่สามารถเปิดกล้องได้: ' + err.message;
+  }
+}
+
+// ════════════════════════════════════════════════════
+//  ZOOM
+// ════════════════════════════════════════════════════
+function applyZoom(delta) {
+  if (!zoomTrack) return;
+  const caps = zoomTrack.getCapabilities ? zoomTrack.getCapabilities() : {};
+  if (!caps.zoom) return;
+  zoomLevel = Math.min(caps.zoom.max, Math.max(caps.zoom.min, zoomLevel + delta));
+  zoomTrack.applyConstraints({ advanced: [{ zoom: zoomLevel }] }).catch(() => {});
+  const step = caps.zoom.step || 0.1;
+  zoomLabel.textContent = zoomLevel.toFixed(1) + '×';
+}
+
+// ════════════════════════════════════════════════════
+//  ROI GEOMETRY
+// ════════════════════════════════════════════════════
+function resizeROI() {
+  const main = $('main-view');
+  const mw = main.clientWidth, mh = main.clientHeight;
+  roi.w = Math.round(mw * ROI_W_FRAC);
+  roi.h = Math.round(mh * ROI_H_FRAC);
+  roi.x = Math.round((mw - roi.w) / 2);
+  roi.y = Math.round((mh - roi.h) / 2);
+
+  setAttr(roiRect, { x: roi.x, y: roi.y, width: roi.w, height: roi.h });
+
+  // Dim bands
+  overlay.querySelectorAll('.dim-band').forEach(e => e.remove());
+  [
+    [0, 0, mw, roi.y],
+    [0, roi.y + roi.h, mw, mh - roi.y - roi.h],
+    [0, roi.y, roi.x, roi.h],
+    [roi.x + roi.w, roi.y, mw - roi.x - roi.w, roi.h],
+  ].forEach(([x, y, w, h]) => {
+    const r = document.createElementNS('http://www.w3.org/2000/svg', 'rect');
+    r.classList.add('dim-band');
+    setAttr(r, { x, y, width: w, height: h, fill: 'rgba(0,0,0,0.52)' });
+    overlay.insertBefore(r, roiRect);
+  });
+
+  // Corners
+  const x1=roi.x, y1=roi.y, x2=roi.x+roi.w, y2=roi.y+roi.h;
+  [
+    ['c-tl-h', x1, y1, x1+CORNER_LEN, y1], ['c-tl-v', x1, y1, x1, y1+CORNER_LEN],
+    ['c-tr-h', x2, y1, x2-CORNER_LEN, y1], ['c-tr-v', x2, y1, x2, y1+CORNER_LEN],
+    ['c-bl-h', x1, y2, x1+CORNER_LEN, y2], ['c-bl-v', x1, y2, x1, y2-CORNER_LEN],
+    ['c-br-h', x2, y2, x2-CORNER_LEN, y2], ['c-br-v', x2, y2, x2, y2-CORNER_LEN],
+  ].forEach(([id, ax1, ay1, ax2, ay2]) => {
+    setAttr($(id), { x1:ax1, y1:ay1, x2:ax2, y2:ay2,
+      stroke:'#ffffff', 'stroke-width': CORNER_W, 'stroke-linecap':'square' });
+  });
+
+  setAttr(sweepLine, { x1: roi.x, x2: roi.x + roi.w, y1: roi.y, y2: roi.y });
+  sweepLine.style.setProperty('--roi-h', roi.h + 'px');
+
+  const gx = roi.x + roi.w / 2, gy = roi.y + roi.h + 26;
+  setAttr(guideText, { x: gx, y: gy });
+  const tw = 180, th = 22;
+  setAttr(guideBg, { x: gx - tw/2, y: gy - th + 4, width: tw, height: th, rx: 4 });
+}
+
+function setAttr(el, attrs) {
+  if (!el) return;
+  Object.entries(attrs).forEach(([k, v]) => el.setAttribute(k, v));
+}
+
+// ════════════════════════════════════════════════════
+//  STATE
+// ════════════════════════════════════════════════════
+const stateMap = {
+  [State.IDLE]:     { dot:'idle',     label:'OFFLINE',  roi:'',         guide:'กรุณาเปิดกล้อง',     sweep:false },
+  [State.READY]:    { dot:'ready',    label:'READY',    roi:'',         guide:'วางสัญลักษณ์ในกรอบ', sweep:false },
+  [State.SCANNING]: { dot:'scanning', label:'SCANNING', roi:'scanning', guide:'กำลังวิเคราะห์...',  sweep:true  },
+  [State.DONE]:     { dot:'done',     label:'COMPLETE', roi:'done',     guide:'วิเคราะห์สำเร็จ',    sweep:false },
+  [State.ERROR]:    { dot:'error',    label:'ERROR',    roi:'error',    guide:'เกิดข้อผิดพลาด',     sweep:false },
+};
+
+function setState(s) {
+  appState = s;
+  const cfg = stateMap[s];
+  statusDot.className = 'status-dot ' + cfg.dot;
+  statusLabel.textContent = cfg.label;
+  roiRect.className = cfg.roi;
+  const cornerColor =
+    s === State.SCANNING ? '#fbbf24' :
+    s === State.DONE     ? '#4ade80' :
+    s === State.ERROR    ? '#f87171' : '#ffffff';
+  document.querySelectorAll('.corner').forEach(c => c.setAttribute('stroke', cornerColor));
+  guideText.textContent = cfg.guide;
+  guideBg.setAttribute('fill',
+    s === State.SCANNING ? 'rgba(180,83,9,0.85)' :
+    s === State.DONE     ? 'rgba(21,128,61,0.85)' :
+    s === State.ERROR    ? 'rgba(185,28,28,0.85)' : 'rgba(0,0,0,0.55)'
+  );
+  sweepLine.className = cfg.sweep ? 'active' : '';
+
+  if (s === State.SCANNING) {
+    scanBtn.disabled = true;
+    scanBtn.classList.add('scanning');
+    scanBtn.innerHTML = '<span class="spinner"></span>&nbsp; กำลังวิเคราะห์';
+  } else {
+    scanBtn.disabled = (s === State.IDLE);
+    scanBtn.classList.remove('scanning');
+    scanBtn.textContent = (s === State.DONE || s === State.ERROR) ? 'SCAN AGAIN' : 'SCAN SYMBOL';
+  }
+}
+
+// ════════════════════════════════════════════════════
+//  CAPTURE — FIX: no flip for environment camera
+// ════════════════════════════════════════════════════
+function captureROI() {
+  if (uploadedImageB64) return uploadedImageB64; // use uploaded image as-is
+
+  const vw = video.videoWidth, vh = video.videoHeight;
+  if (!vw || !vh) return null;
+  const main = $('main-view');
+  const mw = main.clientWidth, mh = main.clientHeight;
+
+  const isFront = currentFacingMode === 'user';
+  let sx, sy, sw, sh;
+
+  if (isFront) {
+    // Front camera: video is mirrored in display, capture must un-mirror
+    sx = Math.round((mw - (roi.x + roi.w)) * vw / mw);
+    sy = Math.round(roi.y * vh / mh);
+    sw = Math.round(roi.w * vw / mw);
+    sh = Math.round(roi.h * vh / mh);
+    canvas.width = sw; canvas.height = sh;
+    ctx.clearRect(0, 0, sw, sh);
+    ctx.save();
+    ctx.translate(sw, 0); ctx.scale(-1, 1);
+    ctx.drawImage(video, sx, sy, sw, sh, 0, 0, sw, sh);
+    ctx.restore();
+  } else {
+    // Rear camera: no mirror — ROI maps directly
+    sx = Math.round(roi.x * vw / mw);
+    sy = Math.round(roi.y * vh / mh);
+    sw = Math.round(roi.w * vw / mw);
+    sh = Math.round(roi.h * vh / mh);
+    canvas.width = sw; canvas.height = sh;
+    ctx.clearRect(0, 0, sw, sh);
+    ctx.drawImage(video, sx, sy, sw, sh, 0, 0, sw, sh);
+  }
+
+  return canvas.toDataURL('image/jpeg', 0.92).split(',')[1];
+}
+
+// ════════════════════════════════════════════════════
+//  IMAGE UPLOAD
+// ════════════════════════════════════════════════════
+function handleFileUpload(file) {
+  if (!file || !file.type.startsWith('image/')) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const img = new Image();
+    img.onload = () => {
+      // Draw into canvas cropped to ROI aspect ratio
+      const targetW = 640, targetH = Math.round(640 * (roi.h / roi.w));
+      canvas.width = targetW; canvas.height = targetH;
+      ctx.clearRect(0, 0, targetW, targetH);
+      // Fit image into canvas
+      const scale = Math.min(targetW / img.width, targetH / img.height);
+      const dw = img.width * scale, dh = img.height * scale;
+      ctx.fillStyle = '#fff';
+      ctx.fillRect(0, 0, targetW, targetH);
+      ctx.drawImage(img, (targetW - dw) / 2, (targetH - dh) / 2, dw, dh);
+      uploadedImageB64 = canvas.toDataURL('image/jpeg', 0.92).split(',')[1];
+
+      // Show uploaded image in video area
+      video.style.display = 'none';
+      let uploadPreview = $('upload-preview');
+      if (!uploadPreview) {
+        uploadPreview = document.createElement('img');
+        uploadPreview.id = 'upload-preview';
+        uploadPreview.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#000;z-index:1;';
+        $('main-view').appendChild(uploadPreview);
+      }
+      uploadPreview.src = e.target.result;
+      uploadPreview.style.display = 'block';
+
+      setState(State.READY);
+      scanBtn.disabled = false;
+      guideText.textContent = 'รูปภาพพร้อมวิเคราะห์';
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+// ════════════════════════════════════════════════════
+//  API CALL (OpenAI or Anthropic)
+// ════════════════════════════════════════════════════
+async function scanSymbol() {
+  const apiKey = getKey(activeProvider);
+  if (!apiKey) { showKeyModal(); return; }
+
+  const b64 = captureROI();
+  if (!b64) { alert('ไม่สามารถจับภาพได้'); return; }
+  const thumbUrl = 'data:image/jpeg;base64,' + b64;
+
+  setState(State.SCANNING);
+  closeDrawer();
+
+  try {
+    let raw;
+
+    if (activeProvider === 'openai') {
+      raw = await callOpenAI(apiKey, b64);
+    } else {
+      raw = await callAnthropic(apiKey, b64);
+    }
+
+    // Parse JSON response
+    let parsed;
+    try {
+      const clean = raw.replace(/```json|```/g, '').trim();
+      parsed = JSON.parse(clean);
+    } catch(e) {
+      // Fallback: treat first line as name, rest as desc
+      const lines = raw.split('\n').map(l => l.trim()).filter(Boolean);
+      parsed = { name: lines[0] || 'ไม่สามารถระบุได้', nameTH: '', stdCodes: [], description: lines.slice(1).join(' ') || raw };
+    }
+
+    const entry = {
+      name: parsed.name || 'Unknown',
+      nameTH: parsed.nameTH || '',
+      stdCodes: parsed.stdCodes || [],
+      description: parsed.description || parsed.desc || '',
+      category: parsed.category || '',
+      thumb: thumbUrl,
+      time: new Date().toLocaleTimeString('th-TH', { hour: '2-digit', minute: '2-digit' })
+    };
+
+    // Save to history (max 20)
+    scanHistory.unshift(entry);
+    if (scanHistory.length > 20) scanHistory.pop();
+    try { localStorage.setItem(KEY_HISTORY, JSON.stringify(scanHistory)); } catch(e) {}
+    renderHistory();
+
+    setState(State.DONE);
+    showResult(entry);
+
+  } catch (err) {
+    console.error('API Error:', err);
+    setState(State.ERROR);
+    showError(err.message);
+  }
+}
+
+async function callOpenAI(apiKey, b64) {
+  const res = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${apiKey}` },
+    body: JSON.stringify({
+      model: 'gpt-4o', max_tokens: 600,
+      messages: [
+        { role: 'system', content: SYSTEM_PROMPT },
+        { role: 'user', content: [
+          { type: 'image_url', image_url: { url: `data:image/jpeg;base64,${b64}`, detail: 'high' } },
+          { type: 'text', text: 'ระบุสัญลักษณ์วิศวกรรมนี้ ตอบเป็น JSON เท่านั้น' }
+        ]}
+      ]
+    })
+  });
+  if (!res.ok) {
+    const e = await res.json().catch(() => ({}));
+    throw new Error(e?.error?.message || `OpenAI HTTP ${res.status}`);
+  }
+  const data = await res.json();
+  return data.choices?.[0]?.message?.content?.trim() || '';
+}
+
+async function callAnthropic(apiKey, b64) {
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': apiKey,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true'
+    },
+    body: JSON.stringify({
+      model: 'claude-opus-4-5', max_tokens: 600,
+      system: SYSTEM_PROMPT,
+      messages: [{ role: 'user', content: [
+        { type: 'image', source: { type: 'base64', media_type: 'image/jpeg', data: b64 } },
+        { type: 'text', text: 'ระบุสัญลักษณ์วิศวกรรมนี้ ตอบเป็น JSON เท่านั้น' }
+      ]}]
+    })
+  });
+  if (!res.ok) {
+    const e = await res.json().catch(() => ({}));
+    throw new Error(e?.error?.message || `Anthropic HTTP ${res.status}`);
+  }
+  const data = await res.json();
+  return data.content?.[0]?.text?.trim() || '';
+}
+
+// ════════════════════════════════════════════════════
+//  RESULT DISPLAY
+// ════════════════════════════════════════════════════
+function buildResultHTML(entry) {
+  const stdPills = (entry.stdCodes || []).map(c => `<span class="std-pill">${escHtml(c)}</span>`).join('');
+  return `
+    <div class="result-strip">
+      <div class="result-meta">
+        <span class="result-meta-tag">${escHtml(entry.category || 'Symbol Identified')}</span>
+        <span class="result-meta-std">IEC · IEEE · ISA</span>
+      </div>
+      <div class="result-name-row">
+        <img class="result-thumb" src="${entry.thumb}" alt="ภาพที่สแกน" />
+        <div>
+          <div class="result-name">${escHtml(entry.name)}</div>
+          ${entry.nameTH ? `<div style="font-size:13px;color:var(--text-muted);margin-top:3px;">${escHtml(entry.nameTH)}</div>` : ''}
+        </div>
+      </div>
+      ${stdPills ? `<div class="std-code-row">${stdPills}</div>` : ''}
+    </div>
+    <div class="result-body">
+      <div class="result-section-label">Description / คำอธิบาย</div>
+      <div class="result-desc">${escHtml(entry.description)}</div>
+    </div>
+  `;
+}
+
+function showResult(entry) {
+  resultContent.innerHTML = buildResultHTML(entry);
+  showTab('result');
+  openDrawer();
+}
+
+function showError(msg) {
+  resultContent.innerHTML = `
+    <div class="result-body">
+      <div class="error-block">
+        <div class="error-icon">⚠️</div>
+        <div>
+          <div class="error-title">เกิดข้อผิดพลาด</div>
+          <div class="error-msg">${escHtml(msg)}</div>
+        </div>
+      </div>
+    </div>
+  `;
+  showTab('result');
+  openDrawer();
+}
+
+// ════════════════════════════════════════════════════
+//  HISTORY
+// ════════════════════════════════════════════════════
+function renderHistory() {
+  historyCount.textContent = scanHistory.length;
+  if (scanHistory.length === 0) {
+    historyList.innerHTML = '<div class="history-empty">ยังไม่มีประวัติการสแกน</div>';
+    return;
+  }
+  const clearBtn = `<button class="history-clear" id="clear-history-btn">ล้างประวัติทั้งหมด</button>`;
+  const items = scanHistory.map((entry, i) => `
+    <div class="history-item" data-index="${i}">
+      <img class="history-thumb" src="${entry.thumb}" alt="" />
+      <div class="history-info">
+        <div class="history-name">${escHtml(entry.name)}</div>
+        <div class="history-time">${entry.time}${entry.nameTH ? ' · ' + escHtml(entry.nameTH) : ''}</div>
+      </div>
+    </div>
+  `).join('');
+  historyList.innerHTML = items + clearBtn;
+
+  historyList.querySelectorAll('.history-item').forEach(el => {
+    el.addEventListener('click', () => {
+      const idx = parseInt(el.dataset.index);
+      const entry = scanHistory[idx];
+      if (entry) { showResult(entry); }
+    });
+  });
+  $('clear-history-btn')?.addEventListener('click', clearHistory);
+}
+
+function clearHistory() {
+  if (!confirm('ล้างประวัติทั้งหมด?')) return;
+  scanHistory = [];
+  try { localStorage.removeItem(KEY_HISTORY); } catch(e) {}
+  renderHistory();
+}
+
+// ════════════════════════════════════════════════════
+//  TABS
+// ════════════════════════════════════════════════════
+function showTab(which) {
+  tabResultBtn.classList.toggle('active', which === 'result');
+  tabHistoryBtn.classList.toggle('active', which === 'history');
+  tabResult.classList.toggle('active', which === 'result');
+  tabHistory.classList.toggle('active', which === 'history');
+}
+
+// ════════════════════════════════════════════════════
+//  DRAWER
+// ════════════════════════════════════════════════════
+function openDrawer()  { resultDrawer.classList.add('open'); }
+function closeDrawer() { resultDrawer.classList.remove('open'); }
+function resetAll() {
+  closeDrawer();
+  uploadedImageB64 = null;
+  // Restore camera view
+  video.style.display = 'block';
+  const prev = $('upload-preview');
+  if (prev) prev.style.display = 'none';
+  setTimeout(() => {
+    resultContent.innerHTML = '';
+    setState(stream ? State.READY : State.IDLE);
+  }, 300);
+}
+function escHtml(s) {
+  if (!s) return '';
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ════════════════════════════════════════════════════
+//  KEY MODAL
+// ════════════════════════════════════════════════════
+function showKeyModal() {
+  keyInput.value = getKey(activeProvider);
+  keyError.classList.remove('show');
+  keyInput.classList.remove('invalid');
+  keyModal.classList.remove('hidden');
+}
+function hideKeyModal() { keyModal.classList.add('hidden'); }
+
+function validateKey(prov, k) {
+  if (prov === 'openai') return k.startsWith('sk-') && k.length >= 20;
+  if (prov === 'anthropic') return k.startsWith('sk-ant-') && k.length >= 20;
+  return k.length >= 10;
+}
+
+// ════════════════════════════════════════════════════
+//  LISTENERS
+// ════════════════════════════════════════════════════
+function setupListeners() {
+  // Provider toggle
+  $('prov-openai').addEventListener('click',    () => setProvider('openai'));
+  $('prov-anthropic').addEventListener('click', () => setProvider('anthropic'));
+
+  // Save key
+  saveKeyBtn.addEventListener('click', () => {
+    const k = keyInput.value.trim();
+    if (!validateKey(activeProvider, k)) {
+      keyInput.classList.add('invalid');
+      keyError.classList.add('show');
+      return;
+    }
+    saveKey(activeProvider, k);
+    hideKeyModal();
+    if (!stream) startCamera();
+  });
+
+  keyInput.addEventListener('input', () => {
+    keyInput.classList.remove('invalid');
+    keyError.classList.remove('show');
+  });
+
+  // Main actions
+  scanBtn.addEventListener('click', () => { if (appState !== State.SCANNING) scanSymbol(); });
+  resetBtn.addEventListener('click', resetAll);
+  keyBtn.addEventListener('click', showKeyModal);
+  permBtn.addEventListener('click', startCamera);
+
+  // Upload
+  uploadBtn.addEventListener('click', () => fileInput.click());
+  fileInput.addEventListener('change', () => {
+    if (fileInput.files[0]) handleFileUpload(fileInput.files[0]);
+    fileInput.value = '';
+  });
+
+  // Zoom
+  zoomInBtn.addEventListener('click',  () => applyZoom(0.5));
+  zoomOutBtn.addEventListener('click', () => applyZoom(-0.5));
+
+  // Tabs
+  tabResultBtn.addEventListener('click',  () => showTab('result'));
+  tabHistoryBtn.addEventListener('click', () => showTab('history'));
+
+  // Keyboard
+  document.addEventListener('keydown', e => {
+    if (e.code === 'Space' && appState !== State.SCANNING) { e.preventDefault(); scanSymbol(); }
+    if (e.code === 'KeyR') resetAll();
+    if (e.code === 'Escape') { hideKeyModal(); closeDrawer(); }
+  });
+
+  new ResizeObserver(() => resizeROI()).observe($('main-view'));
+
+  $('dismiss-install').addEventListener('click', () => installBanner.classList.remove('show'));
+  $('install-btn').addEventListener('click', async () => {
+    if (!deferredInstall) return;
+    deferredInstall.prompt();
+    const { outcome } = await deferredInstall.userChoice;
+    if (outcome === 'accepted') installBanner.classList.remove('show');
+    deferredInstall = null;
+  });
+}
+
+// ════════════════════════════════════════════════════
+//  PWA
+// ════════════════════════════════════════════════════
+function setupPWA() {
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('sw.js').catch(() => {});
+  }
+  window.addEventListener('beforeinstallprompt', e => {
+    e.preventDefault();
+    deferredInstall = e;
+    setTimeout(() => installBanner.classList.add('show'), 4000);
+  });
+  window.addEventListener('appinstalled', () => {
+    installBanner.classList.remove('show');
+    deferredInstall = null;
+  });
+}
+
+init();
+</script>
+</body>
+</html>
