@@ -597,20 +597,26 @@ window.__docxLoadFailed = true; // always use our own writer
   .csp-item input[type=text] { font-size: 12px; padding: 4px 8px; margin-bottom: 0; }
   .csp-item textarea { font-size: 12px; min-height: 60px; margin-bottom: 0; }
   /* Thumbnail overview mode */
-  .preview-area.mode-overview { overflow-y: auto; padding: 16px; }
-  .overview-grid { display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
-  .overview-thumb {
-    position: relative; cursor: pointer; border: 2px solid transparent;
-    border-radius: 4px; overflow: hidden; transition: all 0.15s;
-    flex-shrink: 0;
+  .preview-area.mode-overview { overflow-y: auto; padding: 20px 16px; align-items: flex-start; }
+  .overview-grid {
+    display: flex; flex-wrap: wrap; gap: 12px; justify-content: flex-start;
+    width: 100%; padding: 4px;
   }
-  .overview-thumb:hover { border-color: var(--accent-light); transform: translateY(-2px); }
-  .overview-thumb.active-thumb { border-color: var(--gold); box-shadow: 0 0 0 2px var(--gold); }
+  .overview-thumb {
+    position: relative; cursor: pointer;
+    border: 2px solid rgba(255,255,255,0.12);
+    border-radius: 5px; overflow: hidden; transition: all 0.15s;
+    flex-shrink: 0; background: #fffef9;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.4);
+  }
+  .overview-thumb:hover { border-color: var(--accent-light); transform: translateY(-3px); box-shadow: 0 6px 20px rgba(0,0,0,0.5); }
+  .overview-thumb.active-thumb { border-color: var(--gold); box-shadow: 0 0 0 2px var(--gold), 0 4px 16px rgba(0,0,0,0.5); }
   .overview-thumb-label {
     position: absolute; bottom: 0; left: 0; right: 0;
-    background: rgba(26,22,18,0.75); color: #e8e4de;
-    font-size: 8px; text-align: center; padding: 2px 4px;
+    background: rgba(26,22,18,0.8); color: #e8e4de;
+    font-size: 8px; text-align: center; padding: 3px 4px;
     white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    font-family: 'Sarabun', sans-serif;
   }
   .fmt-btn {
     padding: 4px 8px; border: 1px solid var(--border); border-radius: 3px;
@@ -3137,8 +3143,9 @@ window.__docxLoadFailed = true; // always use our own writer
               </div>
             </div>
           </div>
-          <div class="panel-section">
-            <div class="panel-section-title">แก้ไขบทที่เลือก</div>
+          <div class="panel-section" id="chapterEditSection">
+            <div class="panel-section-title" style="cursor:default;pointer-events:none">แก้ไขบทที่เลือก</div>
+            <div class="panel-section-body" style="display:block !important">
             <input class="chapter-title-input" type="text" id="chapterTitleInput" placeholder="ชื่อบท..." oninput="updateChapterTitle(this.value)">
             <div class="format-bar">
               <button class="fmt-btn" onclick="insertText('«', '»')">« »</button>
@@ -3151,6 +3158,7 @@ window.__docxLoadFailed = true; // always use our own writer
               <button class="fmt-btn" onclick="insertCmd()">[ คำสั่ง ]</button>
             </div>
             <textarea class="editor-textarea" id="chapterEditor" placeholder="เริ่มเขียนเนื้อหาของบทนี้..." oninput="updateChapterContent(this.value)" onmouseup="showInlineFmtBarOnSelect()" onkeyup="showInlineFmtBarOnSelect()" rows="18"></textarea>
+            </div><!-- /panel-section-body -->
           </div>
           <div class="panel-section">
             <div class="panel-section-title">ภาพประกอบบทนี้</div>
@@ -3830,6 +3838,22 @@ function updateChapterContent(val) {
   if (typeof autoSaveDebounce === 'function') autoSaveDebounce();
 }
 
+// ── Tab key → ย่อหน้าแบบไทย ──
+document.addEventListener('DOMContentLoaded', () => {
+  const ta = document.getElementById('chapterEditor');
+  if (!ta) return;
+  ta.addEventListener('keydown', (e) => {
+    if (e.key === 'Tab') {
+      e.preventDefault();
+      const s = ta.selectionStart, end = ta.selectionEnd;
+      const indent = '\u3000'; // ideographic space (full-width indent)
+      ta.value = ta.value.substring(0, s) + indent + ta.value.substring(end);
+      ta.selectionStart = ta.selectionEnd = s + indent.length;
+      updateChapterContent(ta.value);
+    }
+  });
+});
+
 function addChapter() {
   recordHistory();
   const newId = Date.now();
@@ -4147,51 +4171,58 @@ function renderChapterPages() {
   const dividerHTML = getDividerHTML();
 
   // Estimate chars per page based on settings
-  // A5 content area: (559 - 2*mh) px wide, (794 - mv - (mv+8) - 60header) px tall
-  // Rough chars per line ≈ content_width / (fs * 0.6)
-  // Lines per page ≈ content_height / (fs * lh)
+  // Thai chars average ~0.95 of font size width; Latin ~0.55
+  // Use 0.65 as blended factor for Thai-heavy text
   const contentW = 559 - 2 * mh;
   const headerH = showHeader ? 32 : 0;
   const footerH = showPageNum ? 32 : 0;
+  // Reserve: top padding + bottom padding + 8px extra bottom
   const contentH = 794 - mv - (mv + 8) - headerH - footerH;
-  const charsPerLine = Math.floor(contentW / (fs * 0.56));
-  const linesPerPage = Math.floor(contentH / (fs * lh));
-  const CHARS_PER_PAGE = Math.max(400, charsPerLine * linesPerPage);
+  // Characters per line: Thai text is wider than Latin
+  const charsPerLine = Math.max(10, Math.floor(contentW / (fs * 0.65)));
+  // Lines per page: use actual pixel line height
+  const lineHeightPx = fs * lh;
+  const linesPerPage = Math.max(5, Math.floor(contentH / lineHeightPx));
+  // chars per page = lines * chars per line, but paragraphs each start a new line
+  // Add paragraph overhead: each para costs 1 extra line (paragraph break)
+  const CHARS_PER_PAGE = Math.max(300, charsPerLine * linesPerPage);
 
   let pageNum = 3; // cover=1, title=2, chapters start at 3
 
   chapters.forEach((ch, ci) => {
     const paragraphs = ch.content.split('\n').filter(p => p.trim());
 
-    // Split paragraphs into pages
-    // First page has less room due to chapter title/header area
-    const TITLE_RESERVE = Math.ceil(180 / (fs * lh)); // lines reserved for chapter title block
-    const firstPageChars = Math.max(100, CHARS_PER_PAGE - (TITLE_RESERVE * charsPerLine));
+    // Split paragraphs into pages — count lines (wrapping) not raw chars
+    // Each paragraph wraps into ceil(len / charsPerLine) lines + 1 blank line gap
+    const TITLE_RESERVE_LINES = Math.ceil(200 / lineHeightPx) + 1; // lines used by chapter heading block
+    const firstPageLines = Math.max(4, linesPerPage - TITLE_RESERVE_LINES);
 
-    // Group paragraphs into page buckets — image-aware
-    // Each page's capacity shrinks by the height of any freeImages already on it
+    function paraLines(p) {
+      // Count visual lines this paragraph takes, including wrap
+      return Math.max(1, Math.ceil(p.length / charsPerLine)) + 0.4; // +0.4 for paragraph gap
+    }
+
     const pageGroups = [[]];
-    let charCount = 0;
+    let lineCount = 0;
 
-    const getPageLimit = (pgIdx) => {
+    const getPageLineLimit = (pgIdx) => {
       const key = `${ch.id}_${pgIdx}`;
       const imgs = freeImages[key] || [];
-      const imgH = imgs.reduce((s, im) => s + (im.h || 0), 0);
-      const imgLines = Math.ceil(imgH / (fs * lh));
-      const base = pgIdx === 0 ? firstPageChars : CHARS_PER_PAGE;
-      return Math.max(80, base - imgLines * charsPerLine);
+      const imgLines = imgs.reduce((s, im) => s + Math.ceil((im.h || 0) / lineHeightPx), 0);
+      const base = pgIdx === 0 ? firstPageLines : linesPerPage;
+      return Math.max(4, base - imgLines);
     };
 
     paragraphs.forEach((p) => {
-      const pLen = p.length + 1;
+      const pLines = paraLines(p);
       const curPg = pageGroups.length - 1;
-      const limit = getPageLimit(curPg);
-      if (charCount + pLen > limit && pageGroups[curPg].length > 0) {
+      const limit = getPageLineLimit(curPg);
+      if (lineCount + pLines > limit && pageGroups[curPg].length > 0) {
         pageGroups.push([]);
-        charCount = 0;
+        lineCount = 0;
       }
       pageGroups[pageGroups.length - 1].push(p);
-      charCount += pLen;
+      lineCount += pLines;
     });
     if (paragraphs.length === 0) pageGroups[0] = [];
 
@@ -4533,39 +4564,43 @@ function showToast(msg) {
 async function exportPDF() {
   showToast('⏳ กำลังสร้าง PDF... อาจใช้เวลาสักครู่');
   try {
-    // Dynamically load html2canvas if not present
     if (!window.html2canvas) {
       await new Promise((resolve, reject) => {
         const s = document.createElement('script');
         s.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
-        s.onload = resolve; s.onerror = reject;
+        s.onload = resolve; s.onerror = () => reject(new Error('โหลด html2canvas ไม่ได้ — ต้องใช้ Internet'));
         document.head.appendChild(s);
       });
     }
 
     const { jsPDF } = window.jspdf;
-    const title = document.getElementById('bookTitle').value;
-    const safeTitle = title.replace(/[^a-zA-Z0-9ก-๙]/g, '_') || 'ebook';
+    if (!jsPDF) throw new Error('โหลด jsPDF ไม่ได้');
+    const title = document.getElementById('bookTitle').value || 'ebook';
+    const safeTitle = title.replace(/[^a-zA-Z0-9ก-๙]/g, '_');
     const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a5' });
     const W = 148, H = 210;
 
-    // Collect all pages to render
+    // Collect all page elements
     const pageCover = document.getElementById('pageCover');
     const pageTitlePage = document.getElementById('pageTitlePage');
-    const specialPages = document.querySelectorAll('.special-page-wrap .page');
-    const chapterPageEls = document.querySelectorAll('#chapterPages .page');
+    const specialPages = Array.from(document.querySelectorAll('.special-page-wrap .page'));
+    const chapterPageEls = Array.from(document.querySelectorAll('#chapterPages .page'));
+    const allPageEls = [pageCover, pageTitlePage, ...specialPages, ...chapterPageEls].filter(Boolean);
 
-    const allPages = [pageCover, pageTitlePage, ...specialPages, ...chapterPageEls];
+    // Force all pages visible (hide via display:none breaks html2canvas)
+    const prevDisplay = allPageEls.map(p => p.style.display);
+    allPageEls.forEach(p => { p.style.display = 'flex'; });
+    // Also unhide any page-label elements temporarily
+    const prevLabelDisplay = [];
+    document.querySelectorAll('.page-label').forEach(l => { prevLabelDisplay.push([l, l.style.display]); l.style.display = 'none'; });
 
     let first = true;
-    for (const pageEl of allPages) {
-      if (!pageEl) continue;
+    for (const pageEl of allPageEls) {
       const canvas = await html2canvas(pageEl, {
-        scale: 2,
-        useCORS: true,
-        allowTaint: true,
-        backgroundColor: '#fffef9',
-        logging: false
+        scale: 2, useCORS: true, allowTaint: true,
+        backgroundColor: '#fffef9', logging: false,
+        width: 559, height: 794,
+        windowWidth: 559, windowHeight: 794
       });
       const imgData = canvas.toDataURL('image/jpeg', 0.92);
       if (!first) pdf.addPage();
@@ -4573,16 +4608,16 @@ async function exportPDF() {
       first = false;
     }
 
+    // Restore display states
+    allPageEls.forEach((p, i) => { p.style.display = prevDisplay[i]; });
+    prevLabelDisplay.forEach(([l, d]) => { l.style.display = d; });
+
+    // Download
     pdf.save(`${safeTitle}_A5.pdf`);
-    // Also try blob download for Android
-    try {
-      const pdfBlob = pdf.output('blob');
-      _downloadBlob(pdfBlob, `${safeTitle}_A5.pdf`);
-    } catch(e2) { /* ignore, pdf.save already attempted */ }
-    showToast('✅ บันทึก PDF เรียบร้อย!');
+    showToast('✅ Export PDF เรียบร้อย!');
   } catch(e) {
-    console.error(e);
-    showToast('❌ PDF error: ' + e.message);
+    console.error('PDF export error:', e);
+    showToast('❌ PDF error: ' + (e.message || e));
   }
 }
 
@@ -4715,146 +4750,17 @@ ${bodyXml}
   showToast('✅ บันทึก .docx เรียบร้อย! (basic XML mode)');
 }
 
-// ── Export DOCX ──
+// ── Export DOCX (always uses pure-JS XML writer — no external lib needed) ──
 async function exportDOCX() {
   showToast('⏳ กำลังสร้าง .docx...');
-
-  // Check if docx library loaded
-  if (typeof docx === 'undefined' || window.__docxLoadFailed) {
-    showToast('⚠️ ใช้ XML mode (ไม่พบ docx library)');
-    return exportDOCX_fallback();
-  }
-
   try {
-    const { Document, Packer, Paragraph, TextRun, AlignmentType, HeadingLevel, PageBreak,
-            ImageRun } = docx;
-
-    const title = document.getElementById('bookTitle').value;
-    const subtitle = document.getElementById('bookSubtitle').value;
-    const author = document.getElementById('authorName').value;
-    const pen = document.getElementById('penName').value || author;
-    const pub = document.getElementById('publisher').value;
-    const year = document.getElementById('pubYear').value;
-
-    // A5 in DXA (1 inch = 1440 DXA, A5=148x210mm)
-    const A5W = 8391; // 148mm
-    const A5H = 11906; // 210mm
-    const marginDXA = 1134; // ~2cm
-
-    const children = [];
-
-    // Cover page content (text only)
-    children.push(new Paragraph({ alignment: AlignmentType.CENTER,
-      spacing: { before: 2400 },
-      children: [new TextRun({ text: title, bold: true, size: 52, font: 'Sarabun' })] }));
-    children.push(new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 200 },
-      children: [new TextRun({ text: subtitle, italics: true, size: 26, color: '888880', font: 'Sarabun' })] }));
-    children.push(new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 600 },
-      children: [new TextRun({ text: 'โดย  ' + pen, size: 24, font: 'Sarabun' })] }));
-    children.push(new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 3200 },
-      children: [new TextRun({ text: pub + '  ·  ' + year, size: 18, color: 'aaaaaa', font: 'Sarabun' })] }));
-    children.push(new Paragraph({ children: [new PageBreak()] }));
-
-    // Dedication
-    if (document.getElementById('showDedication').checked) {
-      const dedText = document.getElementById('dedicationText').value || '';
-      children.push(new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 2800 },
-        children: [new TextRun({ text: 'อุทิศแด่', size: 16, color: '888880', font: 'Sarabun' })] }));
-      children.push(new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 200 },
-        children: [new TextRun({ text: dedText, italics: true, size: 26, font: 'Sarabun' })] }));
-      children.push(new Paragraph({ children: [new PageBreak()] }));
-    }
-
-    // Preface
-    if (document.getElementById('showPreface').checked) {
-      const pt = document.getElementById('prefaceTitle').value || 'คำนำ';
-      const pc = document.getElementById('prefaceContent').value || '';
-      children.push(new Paragraph({ heading: HeadingLevel.HEADING_1, spacing: { before: 480, after: 300 },
-        children: [new TextRun({ text: pt, bold: true, size: 32, font: 'Sarabun' })] }));
-      pc.split('\n').filter(p=>p.trim()).forEach(p => {
-        children.push(new Paragraph({ spacing: { line: 360 },
-          children: [new TextRun({ text: p, size: 24, font: 'Sarabun' })] }));
-      });
-      children.push(new Paragraph({ children: [new PageBreak()] }));
-    }
-
-    // TOC
-    if (document.getElementById('showTOC').checked) {
-      children.push(new Paragraph({ heading: HeadingLevel.HEADING_1, spacing: { before: 200, after: 300 },
-        children: [new TextRun({ text: 'สารบัญ', bold: true, size: 32, font: 'Sarabun' })] }));
-      chapters.forEach((ch, i) => {
-        children.push(new Paragraph({ spacing: { before: 80 },
-          children: [new TextRun({ text: `บทที่ ${i+1}  ${ch.title || ''}`, size: 22, font: 'Sarabun' })] }));
-      });
-      children.push(new Paragraph({ children: [new PageBreak()] }));
-    }
-
-    // Title page
-    children.push(new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 2000 },
-      children: [new TextRun({ text: '✦  ✦  ✦', size: 24, color: 'c9a227', font: 'Sarabun' })] }));
-    children.push(new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 400 },
-      children: [new TextRun({ text: title, bold: true, size: 44, font: 'Sarabun' })] }));
-    children.push(new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 200 },
-      children: [new TextRun({ text: subtitle, italics: true, size: 22, color: '666660', font: 'Sarabun' })] }));
-    children.push(new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 400 },
-      children: [new TextRun({ text: `โดย  ${author}`, size: 22, font: 'Sarabun' })] }));
-    if (pen !== author) children.push(new Paragraph({ alignment: AlignmentType.CENTER, spacing: { before: 100 },
-      children: [new TextRun({ text: `(นามปากกา: ${pen})`, size: 18, italics: true, color: '888880', font: 'Sarabun' })] }));
-    children.push(new Paragraph({ children: [new PageBreak()] }));
-
-    // Chapters
-    chapters.forEach((ch, i) => {
-      children.push(new Paragraph({ spacing: { before: 480, after: 80 },
-        children: [new TextRun({ text: `บทที่ ${i + 1}`, size: 18, color: '8b4513', bold: true, font: 'Sarabun' })] }));
-      children.push(new Paragraph({ heading: HeadingLevel.HEADING_1, spacing: { before: 100, after: 200 },
-        children: [new TextRun({ text: ch.title || `บทที่ ${i+1}`, bold: true, size: 32, font: 'Sarabun' })] }));
-
-      const paras = ch.content.split('\n').filter(p => p.trim());
-      if (paras.length === 0) {
-        children.push(new Paragraph({ children: [new TextRun({ text: '(ยังไม่มีเนื้อหา)', italics: true, color: 'aaaaaa', font: 'Sarabun' })] }));
-      } else {
-        paras.forEach((p) => {
-          children.push(new Paragraph({
-            alignment: AlignmentType.THAI_DISTRIBUTE,
-            spacing: { line: 360 },
-            children: [new TextRun({ text: p, size: 24, font: 'Sarabun' })]
-          }));
-        });
-      }
-
-      if (i < chapters.length - 1) children.push(new Paragraph({ children: [new PageBreak()] }));
-    });
-
-    const docFile = new Document({
-      styles: {
-        default: { document: { run: { font: 'Sarabun', size: 24 } } },
-        paragraphStyles: [
-          { id: 'Heading1', name: 'Heading 1', basedOn: 'Normal', next: 'Normal', quickFormat: true,
-            run: { size: 32, bold: true, font: 'Sarabun', color: '1a1612' },
-            paragraph: { spacing: { before: 240, after: 120 }, outlineLevel: 0 } }
-        ]
-      },
-      sections: [{
-        properties: {
-          page: {
-            size: { width: A5W, height: A5H },
-            margin: { top: marginDXA, right: marginDXA, bottom: marginDXA, left: marginDXA }
-          }
-        },
-        children
-      }]
-    });
-
-    // Use toBlob (browser-compatible) instead of toBuffer
-    const blob = await Packer.toBlob(docFile);
-    const safeTitle = title.replace(/[^a-zA-Z0-9ก-๙]/g, '_') || 'ebook';
-    _downloadBlob(blob, `${safeTitle}_A5.docx`);
-    showToast('✅ บันทึก .docx เรียบร้อย!');
-  } catch (e) {
-    console.error(e);
-    showToast('❌ เกิดข้อผิดพลาด: ' + e.message);
+    await exportDOCX_fallback();
+  } catch(e) {
+    console.error('DOCX export error:', e);
+    showToast('❌ DOCX error: ' + (e.message || e));
   }
 }
+
 
 // ── View Mode ──
 function setViewMode(mode, btnEl) {
@@ -4905,6 +4811,9 @@ function applyViewMode() {
   if (viewMode === 'spread') {
     zw.querySelectorAll('.page-label').forEach(el => el.style.display = 'none');
     zw.querySelectorAll('.page').forEach(el => el.style.display = 'none');
+
+    // Clean up any old spread-pairs first
+    zw.querySelectorAll('.spread-pair').forEach(sp => sp.replaceWith(...Array.from(sp.childNodes)));
 
     const left = allPages[currentPageIndex];
     const right = allPages[currentPageIndex + 1];
@@ -5226,15 +5135,21 @@ function showInlineFmtBarOnSelect() {
     const sel = ta.value.substring(ta.selectionStart, ta.selectionEnd);
     const bar = document.getElementById('inlineFmtBar');
     if (sel.length > 0) {
-      // Position near selection
+      // Use a hidden span to measure approximate selection position
       const rect = ta.getBoundingClientRect();
-      bar.style.top = (rect.top + 10) + 'px';
-      bar.style.left = (rect.left + rect.width / 2 - 150) + 'px';
+      // Place bar at top-center of textarea, but clamped to viewport
+      const barW = 340;
+      let left = rect.left + rect.width / 2 - barW / 2;
+      let top = rect.top - 44; // above textarea
+      if (top < 60) top = rect.top + 8; // if too high, place inside
+      left = Math.max(8, Math.min(window.innerWidth - barW - 8, left));
+      bar.style.top = top + 'px';
+      bar.style.left = left + 'px';
       bar.classList.add('show');
     } else {
       hideInlineFmtBar();
     }
-  }, 200);
+  }, 150);
 }
 
 function hideInlineFmtBar() {
@@ -5786,9 +5701,15 @@ function closeCtxMenu() {
   menu().classList.remove('open');
 }
 
-document.addEventListener('click', (e) => {
-  if (!menu().contains(e.target)) closeCtxMenu();
-  if (!document.getElementById('perPagePopup').contains(e.target)) closePerPagePopup();
+document.addEventListener('pointerdown', (e) => {
+  // Close ctx menu only if click is outside it — use pointerdown so actions inside still fire
+  if (!menu().contains(e.target)) {
+    // Small delay so menu item onclick fires before we remove the menu
+    setTimeout(closeCtxMenu, 80);
+  }
+  if (!document.getElementById('perPagePopup').contains(e.target)) {
+    setTimeout(closePerPagePopup, 80);
+  }
   if (!e.target.closest('.free-img')) {
     document.querySelectorAll('.free-img').forEach(f => f.classList.remove('selected'));
   }
@@ -6738,35 +6659,60 @@ function renderCustomSpecialPagesList() {
 // ── Thumbnail Overview Mode ──
 function buildOverviewGrid() {
   const area = document.getElementById('previewArea');
-  let grid = area.querySelector('.overview-grid');
-  if (!grid) { grid = document.createElement('div'); grid.className = 'overview-grid'; area.appendChild(grid); }
-  grid.innerHTML = '';
-  const thumbW = 80, thumbH = 113;
-  const units = collectPageUnits();
-  units.forEach((u, idx) => {
+  area.querySelectorAll('.overview-grid').forEach(g => g.remove());
+  const grid = document.createElement('div');
+  grid.className = 'overview-grid';
+  area.appendChild(grid);
+
+  const thumbW = 100, thumbH = 142;
+  const sc = thumbW / 559;
+
+  const pageCover = document.getElementById('pageCover');
+  const pageTitlePage = document.getElementById('pageTitlePage');
+  const specialPageEls = Array.from(document.querySelectorAll('.special-page-wrap .page'));
+  const chapterPageEls = Array.from(document.querySelectorAll('#chapterPages .page'));
+  const allPageEls = [pageCover, pageTitlePage, ...specialPageEls, ...chapterPageEls].filter(Boolean);
+
+  const labelMap = new Map();
+  document.querySelectorAll('.page-label').forEach(lbl => {
+    let sib = lbl.nextElementSibling;
+    while (sib && !sib.classList.contains('page')) sib = sib.nextElementSibling;
+    if (sib) labelMap.set(sib, lbl.textContent.trim());
+  });
+
+  allPageEls.forEach((pageEl, idx) => {
     const thumb = document.createElement('div');
     thumb.className = 'overview-thumb' + (idx === currentPageIndex ? ' active-thumb' : '');
-    thumb.style.cssText = `width:${thumbW}px;height:${thumbH}px;`;
-    const pageEl = u.pages[0];
-    if (pageEl) {
-      const sc = thumbW / 559;
-      const wrap = document.createElement('div');
-      wrap.style.cssText = `position:absolute;top:0;left:0;width:${thumbW}px;height:${thumbH}px;overflow:hidden;`;
-      const clone = pageEl.cloneNode(true);
-      clone.style.cssText = `width:559px;height:794px;transform:scale(${sc});transform-origin:top left;pointer-events:none;`;
-      wrap.appendChild(clone); thumb.appendChild(wrap);
-    }
+    thumb.style.cssText = `width:${thumbW}px;height:${thumbH}px;flex-shrink:0;`;
+
+    const clone = pageEl.cloneNode(true);
+    clone.style.cssText = `position:absolute;top:0;left:0;width:559px;height:794px;transform:scale(${sc});transform-origin:top left;pointer-events:none;display:flex;overflow:hidden;`;
+    clone.querySelectorAll('input,textarea,button,.fi-toolbar,.page-layout-pill,.rh,.resize-dot').forEach(el => el.remove());
+    thumb.appendChild(clone);
+
+    const name = labelMap.get(pageEl) ||
+      (pageEl.id === 'pageCover' ? 'ปกหน้า' :
+       pageEl.id === 'pageTitlePage' ? 'หน้าชื่อเรื่อง' : `หน้า ${idx + 1}`);
     const label = document.createElement('div');
     label.className = 'overview-thumb-label';
-    label.textContent = u.label ? u.label.textContent.trim().substring(0,20) : `หน้า ${idx+1}`;
+    label.textContent = name.length > 18 ? name.substring(0, 18) + '…' : name;
     thumb.appendChild(label);
+
+    const badge = document.createElement('div');
+    badge.style.cssText = 'position:absolute;top:3px;left:3px;background:rgba(26,22,18,0.6);color:#e8e4de;font-size:8px;padding:1px 5px;border-radius:8px;font-weight:700;z-index:10;';
+    badge.textContent = idx + 1;
+    thumb.appendChild(badge);
+
     thumb.addEventListener('click', () => {
       currentPageIndex = idx;
-      setViewMode('single', document.getElementById('vbSingle'));
-      document.getElementById('vbSingle').classList.add('active');
+      toggleOverviewMode(null);
     });
     grid.appendChild(thumb);
   });
+
+  if (allPageEls.length === 0) {
+    grid.innerHTML = '<div style="color:#9a9590;font-size:13px;padding:32px;text-align:center">ยังไม่มีหน้า</div>';
+  }
 }
 
 // ── Sync contenteditable page-body → chapter state ──
@@ -6853,26 +6799,35 @@ document.addEventListener('change', e => {
 // ── Toggle Overview Mode ──
 function toggleOverviewMode(btnEl) {
   if (viewMode === 'overview') {
+    // Exit overview
     viewMode = 'single';
     document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
-    document.getElementById('vbSingle').classList.add('active');
-    const area = document.getElementById('previewArea');
-    area.className = 'preview-area mode-single';
+    const vbSingle = document.getElementById('vbSingle');
+    if (vbSingle) vbSingle.classList.add('active');
+    document.getElementById('previewArea').className = 'preview-area mode-single';
     document.getElementById('pageNavBar').classList.remove('hidden');
+    document.querySelectorAll('.overview-grid').forEach(g => g.remove());
+    // Restore zoomWrap
+    const zw = document.getElementById('zoomWrap');
+    zw.style.display = '';
     applyViewMode();
   } else {
-    const area = document.getElementById('previewArea');
-    const zw = document.getElementById('zoomWrap');
-    zw.querySelectorAll('.page').forEach(el => el.style.display = '');
-    zw.querySelectorAll('.page-label').forEach(el => el.style.display = '');
-    document.getElementById('pageNavBar').classList.add('hidden');
+    // Enter overview — show all pages first so clones render correctly
     viewMode = 'overview';
-    area.className = 'preview-area mode-overview';
+    const zw = document.getElementById('zoomWrap');
+    zw.querySelectorAll('.page').forEach(el => { el.style.display = 'flex'; });
+    zw.querySelectorAll('.page-label').forEach(el => { el.style.display = 'none'; });
+    document.getElementById('previewArea').className = 'preview-area mode-overview';
+    document.getElementById('pageNavBar').classList.add('hidden');
     document.querySelectorAll('.view-btn').forEach(b => b.classList.remove('active'));
     if (btnEl) btnEl.classList.add('active');
-    setTimeout(() => buildOverviewGrid(), 30);
+    // Build thumbnails after paint so clones get rendered styles
+    setTimeout(() => {
+      buildOverviewGrid();
+      zw.style.display = 'none';
+    }, 80);
   }
-} // end toggleOverviewMode
+}
 
 // ── Decorative Elements (Stickers & Text Boxes) ──
 let _decorSerial = 0;
