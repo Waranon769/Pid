@@ -1757,6 +1757,7 @@ window.__docxLoadFailed = true; // always use our own writer
       <div class="ribbon-tab" data-rtab="format" onclick="switchRibbonTab('format',this)">🎨 การจัดหน้า</div>
       <div class="ribbon-tab" data-rtab="theme" onclick="switchRibbonTab('theme',this)">✨ ธีม</div>
       <div class="ribbon-tab" data-rtab="view" onclick="switchRibbonTab('view',this)">👁 มุมมอง</div>
+      <div class="ribbon-tab" data-rtab="spellcheck" onclick="switchRibbonTab('spellcheck',this)">🔍 ตรวจคำ</div>
     </div>
     <button class="ribbon-collapse-btn" id="ribbonCollapseBtn" onclick="toggleRibbon()" title="ซ่อน/แสดง Ribbon">▲</button>
   </div>
@@ -2183,6 +2184,60 @@ window.__docxLoadFailed = true; // always use our own writer
         </button>
       </div>
       <div class="ribbon-group-label">แผง</div>
+    </div>
+  </div>
+
+  <!-- ── แท็บตรวจคำ ── -->
+  <div class="ribbon-body" id="rtab-spellcheck">
+    <div class="ribbon-group">
+      <div class="ribbon-row" style="gap:6px;flex-wrap:wrap;align-items:center">
+        <select id="sc-scope" style="font-size:12px;padding:3px 6px;border:1px solid var(--border);border-radius:4px;background:var(--panel-bg);color:var(--ink);font-family:'Sarabun',sans-serif">
+          <option value="current">บทปัจจุบัน</option>
+          <option value="all">ทุกบท</option>
+        </select>
+        <button class="rb rb-lg" onclick="runSpellCheck()" id="sc-btn" style="min-width:70px">
+          <svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/><line x1="11" y1="8" x2="11" y2="14"/><line x1="8" y1="11" x2="14" y2="11"/></svg>
+          <span class="rb-label">ตรวจ</span>
+        </button>
+        <button class="rb" onclick="clearSpellResults()" title="ล้างผล">
+          <svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6M14 11v6"/></svg>
+        </button>
+      </div>
+      <div class="ribbon-group-label">ตรวจสอบ</div>
+    </div>
+    <div class="ribbon-group" style="flex:1;min-width:200px">
+      <div id="sc-status" style="font-size:11px;color:var(--ink-muted);padding:2px 4px;min-height:32px;display:flex;align-items:center">
+        กด "ตรวจ" เพื่อเริ่มตรวจสอบคำผิด
+      </div>
+      <div class="ribbon-group-label">สถานะ</div>
+    </div>
+  </div>
+</div>
+
+<!-- Modal ผลตรวจคำ -->
+<div id="sc-modal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.65);align-items:center;justify-content:center">
+  <div style="background:var(--paper);border-radius:12px;width:min(700px,95vw);max-height:85vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.4);overflow:hidden">
+    <!-- Header -->
+    <div style="background:var(--ink);color:#e8e4de;padding:14px 20px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0">
+      <div style="font-family:'Playfair Display',serif;font-size:16px;font-weight:700;color:var(--gold)">🔍 ผลตรวจคำผิด</div>
+      <button onclick="document.getElementById('sc-modal').style.display='none'" style="background:none;border:none;color:#9a9590;font-size:20px;cursor:pointer;line-height:1">✕</button>
+    </div>
+    <!-- Summary bar -->
+    <div id="sc-summary" style="background:var(--panel-bg);padding:10px 20px;font-size:13px;color:var(--ink-muted);border-bottom:1px solid var(--border);flex-shrink:0"></div>
+    <!-- Progress -->
+    <div id="sc-progress-wrap" style="padding:10px 20px;background:var(--panel-bg);border-bottom:1px solid var(--border);flex-shrink:0;display:none">
+      <div style="font-size:12px;color:var(--ink-muted);margin-bottom:6px" id="sc-progress-label">กำลังตรวจสอบ...</div>
+      <div style="height:6px;background:var(--border);border-radius:3px;overflow:hidden">
+        <div id="sc-progress-bar" style="height:100%;width:0%;background:linear-gradient(90deg,var(--accent),var(--gold));border-radius:3px;transition:width 0.3s"></div>
+      </div>
+    </div>
+    <!-- Results table -->
+    <div style="overflow-y:auto;flex:1">
+      <div id="sc-results-list" style="padding:12px 20px"></div>
+    </div>
+    <!-- Footer -->
+    <div style="padding:12px 20px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;flex-shrink:0">
+      <button onclick="document.getElementById('sc-modal').style.display='none'" style="padding:8px 20px;background:var(--accent);color:#fff;border:none;border-radius:6px;font-size:13px;font-family:'Sarabun',sans-serif;cursor:pointer;font-weight:600">ปิด</button>
     </div>
   </div>
 </div>
@@ -7512,6 +7567,153 @@ function shouldHidePageNum(isFirstPage, isSpecialPage, isCoverPage, isTitlePage)
 }
 
 init();
+
+// ─── ตรวจคำผิด (Spell Check) ───────────────────────────────────────────────
+
+const SC_SYSTEM = `คุณคือบรรณาธิการภาษาไทยมืออาชีพ ตรวจสอบคำผิดในข้อความภาษาไทย
+
+ตรวจหา: คำสะกดผิด, วรรณยุกต์ผิด, สระผิด, ตัวสะกดผิด, คำที่ใช้ผิดความหมาย, เว้นวรรคผิด
+
+ตอบเป็น JSON array เท่านั้น ไม่มีข้อความอื่น:
+[{"wrong":"คำผิด","correct":"คำถูก","context":"...ประโยคสั้นๆ...","type":"ประเภท"}]
+
+ถ้าไม่พบผิด ตอบ: []`;
+
+async function callClaudeSpell(text) {
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: 'claude-sonnet-4-20250514',
+      max_tokens: 1000,
+      system: SC_SYSTEM,
+      messages: [{ role: 'user', content: text }]
+    })
+  });
+  if (!res.ok) throw new Error('API ' + res.status);
+  const d = await res.json();
+  const raw = (d.content?.[0]?.text || '[]').replace(/```json|```/g, '').trim();
+  try { return JSON.parse(raw); } catch { return []; }
+}
+
+function scChunks(text, size = 3000) {
+  const out = [];
+  let pos = 0;
+  while (pos < text.length) {
+    let end = Math.min(pos + size, text.length);
+    if (end < text.length) { const nl = text.lastIndexOf('\n', end); if (nl > pos + 300) end = nl; }
+    out.push(text.slice(pos, end));
+    pos = end;
+  }
+  return out;
+}
+
+const TYPE_COLOR = {
+  'สะกดผิด':'#ef4444','วรรณยุกต์ผิด':'#f97316','สระผิด':'#eab308',
+  'ตัวสะกดผิด':'#8b5cf6','ความหมายผิด':'#06b6d4','เว้นวรรคผิด':'#10b981'
+};
+function scColor(t) { for (const [k,v] of Object.entries(TYPE_COLOR)) if (t?.includes(k)) return v; return '#6b7280'; }
+
+function clearSpellResults() {
+  document.getElementById('sc-status').textContent = 'กด "ตรวจ" เพื่อเริ่มตรวจสอบคำผิด';
+  document.getElementById('sc-results-list').innerHTML = '';
+  document.getElementById('sc-summary').innerHTML = '';
+}
+
+async function runSpellCheck() {
+  const scope = document.getElementById('sc-scope').value;
+  let text = '';
+  if (scope === 'current') {
+    const ch = chapters.find(c => c.id === currentChapterId);
+    text = ch ? ch.content : '';
+  } else {
+    text = chapters.map(c => c.content).join('\n\n');
+  }
+  if (!text.trim()) { showToast('⚠ ไม่มีข้อความให้ตรวจ'); return; }
+
+  // Show modal
+  const modal = document.getElementById('sc-modal');
+  const resultsList = document.getElementById('sc-results-list');
+  const summary = document.getElementById('sc-summary');
+  const progressWrap = document.getElementById('sc-progress-wrap');
+  const progressBar = document.getElementById('sc-progress-bar');
+  const progressLabel = document.getElementById('sc-progress-label');
+  const statusEl = document.getElementById('sc-status');
+
+  modal.style.display = 'flex';
+  resultsList.innerHTML = '';
+  summary.innerHTML = '<span style="color:var(--ink-muted)">กำลังตรวจสอบ...</span>';
+  progressWrap.style.display = 'block';
+  progressBar.style.width = '0%';
+
+  const chunks = scChunks(text);
+  const allErrors = [];
+  statusEl.textContent = `กำลังตรวจ 0/${chunks.length} ส่วน...`;
+
+  for (let i = 0; i < chunks.length; i++) {
+    progressLabel.textContent = `กำลังตรวจส่วนที่ ${i+1} / ${chunks.length}`;
+    progressBar.style.width = ((i / chunks.length) * 100) + '%';
+    try {
+      const errs = await callClaudeSpell(chunks[i]);
+      allErrors.push(...errs);
+      renderSpellResults(allErrors, resultsList, summary);
+    } catch(e) {
+      summary.innerHTML = `<span style="color:#ef4444">⚠ เกิดข้อผิดพลาด: ${e.message}</span>`;
+      break;
+    }
+    if (i < chunks.length - 1) await new Promise(r => setTimeout(r, 300));
+  }
+
+  progressBar.style.width = '100%';
+  progressWrap.style.display = 'none';
+  statusEl.textContent = `ตรวจเสร็จ: พบ ${allErrors.length} รายการ`;
+
+  const label = scope === 'current'
+    ? chapters.find(c=>c.id===currentChapterId)?.title || 'บทปัจจุบัน'
+    : 'ทุกบท';
+  summary.innerHTML = allErrors.length === 0
+    ? `<span style="color:#10b981">✅ ไม่พบข้อผิดพลาดใน ${label}</span>`
+    : `<strong>พบ ${allErrors.length} รายการ</strong> ใน ${label}`;
+}
+
+function renderSpellResults(errors, container, summary) {
+  if (errors.length === 0) {
+    container.innerHTML = '<div style="text-align:center;padding:32px;color:var(--ink-muted)">✅ ไม่พบข้อผิดพลาด</div>';
+    return;
+  }
+  // group by type
+  const byType = {};
+  errors.forEach(e => { (byType[e.type||'อื่นๆ'] = byType[e.type||'อื่นๆ']||[]).push(e); });
+
+  let html = '<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:14px">';
+  for (const [t, items] of Object.entries(byType)) {
+    const c = scColor(t);
+    html += `<span style="background:${c}22;border:1px solid ${c}55;border-radius:20px;padding:3px 10px;font-size:11px;color:${c};font-weight:600">${t} (${items.length})</span>`;
+  }
+  html += '</div>';
+
+  html += '<table style="width:100%;border-collapse:collapse;font-size:13px">';
+  html += '<thead><tr style="border-bottom:2px solid var(--border);color:var(--ink-muted)">';
+  html += '<th style="text-align:left;padding:6px 8px;font-weight:600">คำผิด</th>';
+  html += '<th style="text-align:left;padding:6px 8px;font-weight:600">คำที่ถูก</th>';
+  html += '<th style="text-align:left;padding:6px 8px;font-weight:600">บริบท</th>';
+  html += '<th style="text-align:left;padding:6px 8px;font-weight:600">ประเภท</th>';
+  html += '</tr></thead><tbody>';
+
+  errors.forEach((e, i) => {
+    const c = scColor(e.type);
+    const bg = i % 2 === 0 ? '' : 'background:var(--panel-bg)';
+    html += `<tr style="border-bottom:1px solid var(--border);${bg}">`;
+    html += `<td style="padding:8px;color:#dc2626;text-decoration:line-through;font-weight:600">${e.wrong||''}</td>`;
+    html += `<td style="padding:8px;color:#16a34a;font-weight:600">${e.correct||''}</td>`;
+    html += `<td style="padding:8px;color:var(--ink-muted);font-size:12px;max-width:220px">${e.context||''}</td>`;
+    html += `<td style="padding:8px"><span style="background:${c}22;border:1px solid ${c}44;border-radius:4px;padding:2px 7px;font-size:11px;color:${c}">${e.type||''}</span></td>`;
+    html += '</tr>';
+  });
+
+  html += '</tbody></table>';
+  container.innerHTML = html;
+}
 </script>
 </body>
 </html>
