@@ -2383,7 +2383,11 @@ window.__docxLoadFailed = true; // always use our own writer
         </button>
         <button class="rb rb-lg" onclick="aiFeature('outline')" title="แปลงโครงเรื่อง → เนื้อหา">
           <svg viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
-          <span class="rb-label">โครง→เรื่อง</span>
+          <span class="rb-label">โครง&rarr;เรื่อง</span>
+        </button>
+        <button class="rb rb-lg" onclick="openStoryPlotter()" title="วางพล็อต AI แบ่งบทอัตโนมัติ">
+          <svg viewBox="0 0 24 24"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+          <span class="rb-label">วางพล็อต</span>
         </button>
       </div>
       <div class="ribbon-group-label">สร้างเนื้อหา</div>
@@ -2400,6 +2404,10 @@ window.__docxLoadFailed = true; // always use our own writer
           <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
           <span class="rb-label">แนะนำต่อ</span>
         </button>
+        <button class="rb rb-lg" onclick="aiFeature('thesaurus')" title="คำไวพจน์ / คำสวยงาม (ไฮไลต์คำก่อน)">
+          <svg viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 016.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 014 19.5v-15A2.5 2.5 0 016.5 2z"/><line x1="10" y1="9" x2="16" y2="9"/><line x1="10" y1="13" x2="14" y2="13"/></svg>
+          <span class="rb-label">คำไวพจน์</span>
+        </button>
       </div>
       <div class="ribbon-group-label">ปรับแต่ง</div>
     </div>
@@ -2411,6 +2419,17 @@ window.__docxLoadFailed = true; // always use our own writer
         <div id="ai-status" style="font-size:11px;color:var(--ink-muted);min-height:20px">ใส่ API Key แล้วเลือกฟีเจอร์</div>
       </div>
       <div class="ribbon-group-label">สถานะ</div>
+    </div>
+
+    <!-- กลุ่ม: Undo AI -->
+    <div class="ribbon-group">
+      <div class="ribbon-row" style="gap:4px">
+        <button class="rb rb-lg" onclick="aiUndoLast()" title="ย้อนกลับเนื้อหาก่อน AI แก้ไข (ประวัติล่าสุด 20 ครั้ง)">
+          <svg viewBox="0 0 24 24"><polyline points="9 14 4 9 9 4"/><path d="M20 20v-7a4 4 0 00-4-4H4"/></svg>
+          <span class="rb-label">Undo AI</span>
+        </button>
+      </div>
+      <div class="ribbon-group-label">ประวัติ AI</div>
     </div>
   </div>
 </div>
@@ -2457,6 +2476,7 @@ window.__docxLoadFailed = true; // always use our own writer
       <button id="ai-btn-copy" onclick="aiCopyResult()" style="padding:7px 16px;background:var(--panel-bg);color:var(--ink);border:1px solid var(--border);border-radius:6px;font-size:13px;font-family:'Sarabun',sans-serif;cursor:pointer;font-weight:600;display:none">📋 คัดลอก</button>
       <button id="ai-btn-insert" onclick="aiInsertResult()" style="padding:7px 16px;background:#16a34a;color:#fff;border:none;border-radius:6px;font-size:13px;font-family:'Sarabun',sans-serif;cursor:pointer;font-weight:600;display:none">✅ ใส่ในบทปัจจุบัน</button>
       <button id="ai-btn-replace" onclick="aiReplaceResult()" style="padding:7px 16px;background:var(--accent);color:#fff;border:none;border-radius:6px;font-size:13px;font-family:'Sarabun',sans-serif;cursor:pointer;font-weight:600;display:none">🔄 แทนที่เนื้อหา</button>
+      <button onclick="aiUndoLast()" title="ย้อนกลับเนื้อหาก่อนที่ AI จะแก้ไข" style="padding:7px 14px;background:transparent;color:var(--ink-muted);border:1px solid var(--border);border-radius:6px;font-size:12px;font-family:'Sarabun',sans-serif;cursor:pointer">↩ Undo AI</button>
       <button onclick="document.getElementById('ai-modal').style.display='none'" style="padding:7px 16px;background:transparent;color:var(--ink-muted);border:1px solid var(--border);border-radius:6px;font-size:13px;font-family:'Sarabun',sans-serif;cursor:pointer">ปิด</button>
     </div>
   </div>
@@ -2505,6 +2525,42 @@ window.__docxLoadFailed = true; // always use our own writer
         <button onclick="aiSaveKeyModal()" style="padding:7px 18px;background:var(--accent);color:#fff;border:none;border-radius:6px;font-size:13px;font-family:'Sarabun',sans-serif;cursor:pointer;font-weight:600">บันทึก Key</button>
       </div>
       <p style="margin-top:12px;font-size:11px;color:var(--ink-faint);text-align:center">🔒 Key เก็บใน localStorage บนเบราว์เซอร์คุณเท่านั้น ไม่มีการส่งออกไปที่อื่น</p>
+    </div>
+  </div>
+</div>
+
+
+<!-- ── Modal Story Plotter ── -->
+<div id="story-plotter-modal" style="display:none;position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,0.7);align-items:center;justify-content:center">
+  <div style="background:var(--paper);border-radius:12px;width:min(820px,96vw);max-height:90vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.5);overflow:hidden">
+    <div style="background:var(--ink);color:#e8e4de;padding:14px 20px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0">
+      <div style="font-family:'Playfair Display',serif;font-size:16px;font-weight:700;color:var(--gold)">🗺️ วางพล็อตเรื่อง — Story Plotter</div>
+      <button onclick="document.getElementById('story-plotter-modal').style.display='none'" style="background:none;border:none;color:#9a9590;font-size:20px;cursor:pointer">✕</button>
+    </div>
+    <div style="padding:16px 20px;background:var(--panel-bg);border-bottom:1px solid var(--border);flex-shrink:0">
+      <div style="font-size:12px;font-weight:700;color:var(--ink-muted);letter-spacing:0.08em;margin-bottom:8px">ไอเดียเรื่องของคุณ (เขียนสั้นๆ ก็ได้)</div>
+      <textarea id="plotter-idea" rows="3" placeholder="เช่น: นิยายรักพระเอกเป็นหมอ นางเอกเป็นนักวาดภาพ เจอกันในโรงพยาบาล มีความขัดแย้งเรื่องครอบครัว..."
+        style="width:100%;resize:vertical;font-family:'Sarabun',sans-serif;font-size:13px;border:1px solid var(--border);border-radius:6px;padding:8px 12px;background:#fff;color:var(--ink);outline:none;min-height:60px"></textarea>
+      <div style="display:flex;gap:10px;margin-top:10px;align-items:center;flex-wrap:wrap">
+        <div style="display:flex;align-items:center;gap:6px">
+          <label style="font-size:12px;color:var(--ink-muted)">จำนวนบท:</label>
+          <input type="number" id="plotter-chapters" min="3" max="30" value="10"
+            style="width:52px;padding:4px 6px;border:1px solid var(--border);border-radius:4px;font-size:12px;text-align:center">
+        </div>
+        <button id="plotter-run-btn" onclick="runStoryPlotter()"
+          style="padding:7px 20px;background:var(--accent);color:#fff;border:none;border-radius:6px;font-size:13px;font-family:'Sarabun',sans-serif;cursor:pointer;font-weight:600;display:flex;align-items:center;gap:6px">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          สร้างโครงเรื่อง
+        </button>
+        <div id="plotter-spinner" style="display:none;font-size:12px;color:var(--accent)">⏳ AI กำลังวางพล็อต...</div>
+      </div>
+    </div>
+    <div style="overflow-y:auto;flex:1;padding:16px 20px">
+      <div id="plotter-result" style="min-height:80px"></div>
+    </div>
+    <div style="padding:12px 20px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end;flex-shrink:0;flex-wrap:wrap">
+      <button id="plotter-btn-add-chapters" onclick="plotterAddChapters()" style="display:none;padding:7px 16px;background:#16a34a;color:#fff;border:none;border-radius:6px;font-size:13px;font-family:'Sarabun',sans-serif;cursor:pointer;font-weight:600">✅ สร้างบทให้ทั้งหมด</button>
+      <button onclick="document.getElementById('story-plotter-modal').style.display='none'" style="padding:7px 16px;background:transparent;border:1px solid var(--border);border-radius:6px;font-size:13px;font-family:'Sarabun',sans-serif;cursor:pointer;color:var(--ink-muted)">ปิด</button>
     </div>
   </div>
 </div>
@@ -3624,6 +3680,12 @@ window.__docxLoadFailed = true; // always use our own writer
             <div class="stat-pill">คำ <span id="statWords">0</span></div>
             <div class="stat-pill">อักขระ <span id="statChars">0</span></div>
             <div class="stat-pill">หน้า <span id="statPages">0</span></div>
+          </div>
+          <div id="stat-extra" style="margin-top:10px;font-size:12px;color:var(--ink-muted);line-height:2;background:var(--panel-bg);border-radius:6px;padding:8px 10px">
+            <div>⏱ เวลาอ่าน: <strong id="statReadTime">—</strong></div>
+            <div>📄 เฉลี่ยต่อหน้า A5: <strong id="statWordsPerPage">—</strong> คำ
+              <span id="statWordsPerPageHint" style="font-size:10px;margin-left:4px"></span>
+            </div>
           </div>
         </div>
         <div class="panel-section">
@@ -5894,18 +5956,43 @@ function switchTab(name, el) {
 function updateStats() {
   let totalWords = 0, totalChars = 0;
   let statsHtml = '';
+  const WORDS_PER_A5_PAGE = 350; // มาตรฐาน A5 นิยาย ~300-400 คำ/หน้า
+  const READING_WPM = 250; // ความเร็วอ่านภาษาไทย ~200-280 wpm
+
   chapters.forEach((ch, i) => {
     const words = ch.content.trim() ? ch.content.trim().split(/\s+/).length : 0;
     const chars = ch.content.length;
+    const estPages = Math.ceil(words / WORDS_PER_A5_PAGE) || 1;
     totalWords += words;
     totalChars += chars;
-    statsHtml += `<div><strong>${ch.title || 'บทที่'+(i+1)}</strong>: ${words} คำ</div>`;
+    statsHtml += `<div style="display:flex;justify-content:space-between;align-items:center;padding:2px 0;border-bottom:1px solid var(--border)">
+      <strong style="font-size:11px">${ch.title || 'บทที่'+(i+1)}</strong>
+      <span style="color:var(--ink-faint);font-size:11px">${words.toLocaleString()} คำ &bull; ~${estPages} หน้า</span>
+    </div>`;
   });
+
+  const totalPages = Math.ceil(totalWords / WORDS_PER_A5_PAGE) + 2;
+  const readMinutes = Math.ceil(totalWords / READING_WPM);
+  const readHours = Math.floor(readMinutes / 60);
+  const readMins = readMinutes % 60;
+  const readTimeStr = readHours > 0 ? `${readHours} ชม. ${readMins} นาที` : `${readMins} นาที`;
+  const avgWordsPerPage = chapters.length > 0 ? Math.round(totalWords / Math.max(1, totalPages - 2)) : 0;
+
+  let wppHint = '';
+  if (avgWordsPerPage > 0) {
+    if (avgWordsPerPage < 250) wppHint = '<span style="color:#f59e0b">⚠ น้อยเกินไป</span>';
+    else if (avgWordsPerPage <= 420) wppHint = '<span style="color:#10b981">✓ เหมาะสม</span>';
+    else wppHint = '<span style="color:#f59e0b">⚠ หนาแน่นเกินไป</span>';
+  }
+
   document.getElementById('statChapters').textContent = chapters.length;
   document.getElementById('statWords').textContent = totalWords.toLocaleString();
   document.getElementById('statChars').textContent = totalChars.toLocaleString();
-  document.getElementById('statPages').textContent = chapters.length + 2;
-  document.getElementById('chapterStats').innerHTML = statsHtml;
+  document.getElementById('statPages').textContent = totalPages;
+  document.getElementById('statReadTime').textContent = totalWords > 0 ? readTimeStr : '—';
+  document.getElementById('statWordsPerPage').textContent = avgWordsPerPage > 0 ? avgWordsPerPage.toLocaleString() : '—';
+  document.getElementById('statWordsPerPageHint').innerHTML = wppHint;
+  document.getElementById('chapterStats').innerHTML = statsHtml || '<div style="color:var(--ink-faint);font-style:italic;font-size:11px">ยังไม่มีบท...</div>';
 }
 
 // ── Toast ──
@@ -9174,10 +9261,11 @@ function aiFeature(feature) {
   const resultEl = document.getElementById('ai-result-text');
 
   const cfg = {
-    continue:  { title: '✍️ ต่อเนื้อเรื่อง',     label: 'คำสั่งเพิ่มเติม (เช่น: ต่อ 2 ย่อหน้า, เพิ่มความตึงเครียด)' },
-    outline:   { title: '📋 โครงเรื่อง → เนื้อหา', label: 'วางโครงเรื่อง/bullet points ที่ต้องการแปลง' },
-    rewrite:   { title: '🎨 ปรับ Style',            label: 'คำสั่งปรับ (เช่น: ภาษาสุภาพ, ดราม่ามากขึ้น, กระชับ)' },
-    suggest:   { title: '💡 แนะนำประโยคต่อ',        label: 'บริบทเพิ่มเติม (เช่น: หลังจากนี้จะเกิดเหตุการณ์อะไร)' },
+    continue:   { title: '✍️ ต่อเนื้อเรื่อง',     label: 'คำสั่งเพิ่มเติม (เช่น: ต่อ 2 ย่อหน้า, เพิ่มความตึงเครียด)' },
+    outline:    { title: '📋 โครงเรื่อง → เนื้อหา', label: 'วางโครงเรื่อง/bullet points ที่ต้องการแปลง' },
+    rewrite:    { title: '🎨 ปรับ Style',            label: 'คำสั่งปรับ (เช่น: ภาษาสุภาพ, ดราม่ามากขึ้น, กระชับ)' },
+    suggest:    { title: '💡 แนะนำประโยคต่อ',        label: 'บริบทเพิ่มเติม (เช่น: หลังจากนี้จะเกิดเหตุการณ์อะไร)' },
+    thesaurus:  { title: '📖 คำไวพจน์ / คำสวยงาม',  label: 'คำหรือวลีที่ต้องการหาคำไวพจน์ (หรือไฮไลต์คำในหน้าก่อนกด)' },
   };
   const c = cfg[feature] || cfg.continue;
   titleEl.textContent = c.title;
@@ -9235,10 +9323,27 @@ ${extra ? `ให้ปรับตามนี้: ${extra}` : 'ปรับใ
     suggest: `คุณคือนักเขียนนิยายไทยมืออาชีพ อ่านข้อความที่ให้ไว้แล้วแนะนำ 3 ตัวเลือกประโยคหรือย่อหน้าถัดไป
 แต่ละตัวเลือกควรนำเรื่องไปในทิศทางที่ต่างกัน ใส่หัวข้อ "ตัวเลือกที่ 1/2/3:" ก่อนแต่ละอัน
 ${extra ? `บริบท: ${extra}` : ''}`,
+
+    thesaurus: `คุณคือนักเขียนนิยายไทยมืออาชีพและผู้เชี่ยวชาญด้านภาษา
+วิเคราะห์คำหรือวลีที่ให้มา แล้วแนะนำคำไวพจน์ คำที่สละสลวย หรือคำที่เหมาะกับนิยายมากกว่า
+จัดออกมาเป็น 3 หมวด:
+1. "คำไวพจน์โดยตรง" — คำที่มีความหมายใกล้เคียงกันมาก (5-8 คำ)
+2. "คำสวยงามสำหรับนิยาย" — คำที่อ่านแล้วรู้สึกมีวรรณศิลป์ มีอารมณ์ (5-8 คำ พร้อมอธิบายสั้น)
+3. "ประโยคตัวอย่าง" — ตัวอย่างประโยค 3 ประโยคที่นำคำไวพจน์ไปใช้ในบริบทนิยาย
+ตอบเป็นภาษาไทย`,
   };
 
   const systemPrompt = prompts[feature] || prompts.continue;
-  const userContent = feature === 'outline' && extra ? extra : text;
+  let userContent;
+  if (feature === 'outline' && extra) {
+    userContent = extra;
+  } else if (feature === 'thesaurus') {
+    const sel = window.getSelection?.()?.toString?.().trim() || '';
+    userContent = sel || extra || text.slice(-200);
+    if (!userContent.trim()) { showToast('⚠ กรุณาไฮไลต์คำที่ต้องการ หรือพิมพ์คำในช่องด้านบน'); runBtn.disabled = false; spinner.style.display = 'none'; progressWrap.style.display = 'none'; return; }
+  } else {
+    userContent = text;
+  }
 
   try {
     progressBar.style.width = '60%';
@@ -9273,6 +9378,7 @@ function aiInsertResult() {
   if (!aiLastResult) return;
   const ch = chapters.find(c => c.id === currentChapterId);
   if (!ch) { showToast('⚠ ไม่พบบทปัจจุบัน'); return; }
+  aiPushUndo(aiCurrentFeature);
   ch.content = (ch.content || '') + '\n\n' + aiLastResult;
   pushHistory();
   updatePreview();
@@ -9285,11 +9391,126 @@ function aiReplaceResult() {
   const ch = chapters.find(c => c.id === currentChapterId);
   if (!ch) { showToast('⚠ ไม่พบบทปัจจุบัน'); return; }
   if (!confirm('แทนที่เนื้อหาทั้งหมดในบทนี้ด้วยข้อความใหม่?')) return;
+  aiPushUndo(aiCurrentFeature);
   ch.content = aiLastResult;
   pushHistory();
   updatePreview();
   document.getElementById('ai-modal').style.display = 'none';
   showToast('🔄 แทนที่เนื้อหาแล้ว');
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ── Story Plotter ──
+let plotterChaptersData = [];
+
+function openStoryPlotter() {
+  const key = aiLoadKey();
+  if (!key) {
+    const modal = document.getElementById('ai-key-modal');
+    modal.style.display = 'flex';
+    aiModalSelectProvider(aiLoadProvider());
+    return;
+  }
+  document.getElementById('story-plotter-modal').style.display = 'flex';
+  document.getElementById('plotter-result').innerHTML = '';
+  document.getElementById('plotter-btn-add-chapters').style.display = 'none';
+  plotterChaptersData = [];
+}
+
+async function runStoryPlotter() {
+  const idea = document.getElementById('plotter-idea').value.trim();
+  if (!idea) { showToast('⚠ กรุณาใส่ไอเดียเรื่องก่อน'); return; }
+  const numChapters = parseInt(document.getElementById('plotter-chapters').value) || 10;
+  const btn = document.getElementById('plotter-run-btn');
+  const spinner = document.getElementById('plotter-spinner');
+  const resultEl = document.getElementById('plotter-result');
+  btn.disabled = true; spinner.style.display = 'inline';
+  resultEl.innerHTML = '<div style="text-align:center;padding:32px;color:var(--ink-muted)">⏳ AI กำลังสร้างโครงเรื่อง...</div>';
+
+  const systemPrompt = `คุณคือนักเขียนนิยายไทยมืออาชีพ ช่วยสร้างโครงเรื่องแบ่งเป็น ${numChapters} บท
+ตอบเป็น JSON เท่านั้น รูปแบบ: {"title":"ชื่อเรื่อง","chapters":[{"num":1,"title":"ชื่อบท","summary":"สรุปบทย่อ 2-3 ประโยค","hook":"ประโยคเปิดบทที่น่าสนใจ"},...]}
+ไม่มี markdown ไม่มี backtick ตอบ JSON ล้วนๆ`;
+
+  try {
+    const raw = await callAI(systemPrompt, `ไอเดียเรื่อง: ${idea}`);
+    const clean = raw.replace(/```json|```/g, '').trim();
+    const data = JSON.parse(clean);
+    plotterChaptersData = data.chapters || [];
+
+    let html = `<div style="margin-bottom:14px">
+      <div style="font-family:'Playfair Display',serif;font-size:17px;font-weight:700;color:var(--accent);margin-bottom:4px">${data.title || 'ชื่อเรื่อง'}</div>
+      <div style="font-size:11px;color:var(--ink-faint)">${plotterChaptersData.length} บท</div>
+    </div>`;
+
+    plotterChaptersData.forEach((ch, i) => {
+      html += `<div style="border:1px solid var(--border);border-radius:8px;padding:12px;margin-bottom:10px;background:#fff;cursor:pointer;transition:box-shadow 0.15s" onclick="plotterSelectChapter(${i})" id="plotter-ch-${i}">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+          <span style="background:var(--accent);color:#fff;border-radius:50%;width:24px;height:24px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;flex-shrink:0">${ch.num||i+1}</span>
+          <strong style="font-size:13px">${ch.title || 'บทที่ '+(i+1)}</strong>
+        </div>
+        <div style="font-size:12px;color:var(--ink-muted);line-height:1.7;margin-bottom:6px">${ch.summary || ''}</div>
+        ${ch.hook ? `<div style="font-size:11px;color:var(--accent);font-style:italic;border-left:3px solid var(--accent);padding-left:8px">"${ch.hook}"</div>` : ''}
+      </div>`;
+    });
+
+    resultEl.innerHTML = html;
+    document.getElementById('plotter-btn-add-chapters').style.display = 'inline-flex';
+    showToast('✅ สร้างโครงเรื่องสำเร็จ!');
+  } catch(e) {
+    resultEl.innerHTML = `<div style="color:#dc2626;padding:16px">⚠ เกิดข้อผิดพลาด: ${e.message}</div>`;
+  } finally {
+    btn.disabled = false; spinner.style.display = 'none';
+  }
+}
+
+function plotterSelectChapter(i) {
+  // highlight selected
+  document.querySelectorAll('[id^="plotter-ch-"]').forEach(el => el.style.boxShadow = '');
+  const el = document.getElementById(`plotter-ch-${i}`);
+  if (el) el.style.boxShadow = '0 0 0 2px var(--accent)';
+}
+
+function plotterAddChapters() {
+  if (!plotterChaptersData.length) return;
+  if (!confirm(`เพิ่ม ${plotterChaptersData.length} บทเข้าโปรเจกต์ปัจจุบัน? (จะเพิ่มต่อท้ายบทที่มีอยู่)`)) return;
+  plotterChaptersData.forEach((ch, i) => {
+    const id = 'ch_plotter_' + Date.now() + '_' + i;
+    chapters.push({
+      id, title: ch.title || ('บทที่ ' + (i+1)),
+      content: ch.hook ? `${ch.hook}\n\n[โครงเรื่อง: ${ch.summary || ''}]` : `[โครงเรื่อง: ${ch.summary || ''}]`,
+      note: ch.summary || '', imageData: null, imageSize: 100
+    });
+  });
+  renderChapterList();
+  selectChapter(chapters[chapters.length - plotterChaptersData.length].id);
+  updatePreview(); updateStats();
+  document.getElementById('story-plotter-modal').style.display = 'none';
+  showToast(`✅ เพิ่ม ${plotterChaptersData.length} บทแล้ว`);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ── AI Prompt History (Undo AI) ──
+const AI_HISTORY_MAX = 20;
+let aiUndoStack = []; // [{chapterId, content, timestamp, feature}]
+
+function aiPushUndo(feature) {
+  const ch = chapters.find(c => c.id === currentChapterId);
+  if (!ch) return;
+  aiUndoStack.push({ chapterId: currentChapterId, content: ch.content, timestamp: Date.now(), feature });
+  if (aiUndoStack.length > AI_HISTORY_MAX) aiUndoStack.shift();
+}
+
+function aiUndoLast() {
+  const last = aiUndoStack.pop();
+  if (!last) { showToast('⚠ ไม่มีประวัติ AI ที่จะย้อนกลับ'); return; }
+  const ch = chapters.find(c => c.id === last.chapterId);
+  if (!ch) { showToast('⚠ ไม่พบบทที่ต้องการ'); return; }
+  ch.content = last.content;
+  if (currentChapterId === last.chapterId) {
+    updatePreview(); updateStats();
+  }
+  const t = new Date(last.timestamp);
+  showToast(`↩ ย้อนกลับก่อน AI "${last.feature}" เมื่อ ${t.getHours()}:${String(t.getMinutes()).padStart(2,'0')}`);
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
