@@ -572,6 +572,38 @@ window.__docxLoadFailed = true; // always use our own writer
   }
   .editor-textarea:focus { border-color: var(--accent); }
 
+  /* WYSIWYG contenteditable editor */
+  .wysiwyg-editor {
+    min-height: 320px;
+    max-height: 520px;
+    overflow-y: auto;
+    resize: vertical;
+    cursor: text;
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+  .wysiwyg-editor:empty::before {
+    content: attr(data-placeholder);
+    color: #aaa;
+    font-style: italic;
+    pointer-events: none;
+  }
+  .wysiwyg-editor p { margin: 0 0 0.5em; }
+  .wysiwyg-editor:focus { border-color: var(--accent); outline: none; }
+  /* Page break marker display */
+  .wysiwyg-editor .we-pagebreak {
+    display: block; text-align: center; color: var(--gold);
+    border-top: 2px dashed rgba(201,162,39,0.55);
+    border-bottom: 2px dashed rgba(201,162,39,0.55);
+    background: rgba(201,162,39,0.07);
+    border-radius: 3px;
+    margin: 10px 0; padding: 4px 0; font-size: 11px;
+    letter-spacing: 0.25em; user-select: none; cursor: default;
+    font-weight: 700;
+  }
+  .wysiwyg-editor .we-pagebreak::before { content: ''; }
+  .wysiwyg-editor .we-pagebreak::after  { content: ''; }
+
   /* Chapter title input */
   .chapter-title-input {
     font-family: 'Playfair Display', serif; font-size: 16px; font-weight: 700;
@@ -1899,6 +1931,7 @@ window.__docxLoadFailed = true; // always use our own writer
         <button class="rb-text" onclick="rbInsert('curly')" title='แทรก " "'" " "</button>
         <button class="rb-text" onclick="rbInsert('break')" title="แทรกเส้นคั่น">— ✦ —</button>
         <button class="rb-text" onclick="rbInsert('para')" title="ย่อหน้าใหม่">¶</button>
+        <button class="rb-text" onclick="insertPageBreak()" title="แทรกตัดหน้าใหม่ (บังคับขึ้นหน้าใหม่)" style="color:#c9a227;border-color:rgba(201,162,39,0.4)">↵ หน้า</button>
       </div>
       <div class="ribbon-row" style="gap:3px; margin-top:3px">
         <button class="rb-text" onclick="rbInsert('bold')" title="แทรก **ตัวหนา**"><b>**B**</b></button>
@@ -3203,16 +3236,32 @@ window.__docxLoadFailed = true; // always use our own writer
             <div class="panel-section-body" style="display:block !important">
             <input class="chapter-title-input" type="text" id="chapterTitleInput" placeholder="ชื่อบท..." oninput="updateChapterTitle(this.value)">
             <div class="format-bar">
-              <button class="fmt-btn" onclick="insertText('«', '»')">« »</button>
-              <button class="fmt-btn" onclick="insertText('"', '"')">" "</button>
-              <button class="fmt-btn" onclick="insertPara()">¶ ย่อหน้า</button>
-              <button class="fmt-btn" onclick="insertBreak()">— ขีดคั่น</button>
-              <button class="fmt-btn" onclick="insertItalic()"><i>เอียง</i></button>
-              <button class="fmt-btn" onclick="insertBold()"><b>หนา</b></button>
-              <button class="fmt-btn" onclick="insertHighlight()">✦ เน้น</button>
-              <button class="fmt-btn" onclick="insertCmd()">[ คำสั่ง ]</button>
+              <button class="fmt-btn" onmousedown="event.preventDefault();weInsert('quote')">« »</button>
+              <button class="fmt-btn" onmousedown="event.preventDefault();weInsert('dquote')">" "</button>
+              <button class="fmt-btn" onmousedown="event.preventDefault();weInsert('para')">¶ ย่อหน้า</button>
+              <button class="fmt-btn" onmousedown="event.preventDefault();weInsert('break')">— ขีดคั่น</button>
+              <button class="fmt-btn" onmousedown="event.preventDefault();weFormat('italic')"><i>เอียง</i></button>
+              <button class="fmt-btn" onmousedown="event.preventDefault();weFormat('bold')"><b>หนา</b></button>
+              <button class="fmt-btn" onmousedown="event.preventDefault();weFormat('underline')"><u>ขีด</u></button>
+              <button class="fmt-btn" onmousedown="event.preventDefault();weFormat('highlight')">✦ เน้น</button>
+              <button class="fmt-btn" onmousedown="event.preventDefault();weInsert('pagebreak')" style="color:var(--gold)">↵ หน้า</button>
+              <!-- Real-time color -->
+              <label title="สีตัวอักษร" style="cursor:pointer;display:flex;align-items:center;gap:3px;padding:2px 4px;border:1px solid var(--border);border-radius:3px;background:#fff;height:28px">
+                <span style="font-size:11px;color:var(--ink-muted)">A</span>
+                <div id="fmtColorSwatch" style="width:14px;height:14px;border-radius:2px;background:#8b4513;border:1px solid #ccc" onmousedown="event.preventDefault();document.getElementById('fmtColorInput').click()"></div>
+                <input type="color" id="fmtColorInput" value="#8b4513" style="display:none" oninput="document.getElementById('fmtColorSwatch').style.background=this.value" onchange="weFormatColor(this.value)">
+              </label>
+              <!-- Real-time font size -->
+              <input type="number" id="fmtSizeInput" min="8" max="72" value="15" style="width:42px;height:28px;border:1px solid var(--border);border-radius:3px;font-size:12px;text-align:center;padding:0 4px;outline:none;margin-bottom:0" title="ขนาดตัวอักษร" onkeydown="if(event.key==='Enter'){event.preventDefault();weFormatSize(this.value)}" onblur="weFormatSize(this.value)">
+              <button class="fmt-btn" onmousedown="event.preventDefault();weFormat('clear')" style="font-size:10px;color:#c0392b">✕ล้าง</button>
             </div>
-            <textarea class="editor-textarea" id="chapterEditor" placeholder="เริ่มเขียนเนื้อหาของบทนี้..." oninput="updateChapterContent(this.value)" onmouseup="showInlineFmtBarOnSelect()" onkeyup="showInlineFmtBarOnSelect()" rows="18"></textarea>
+            <div class="editor-textarea wysiwyg-editor" id="chapterEditor"
+              contenteditable="true" spellcheck="false"
+              data-placeholder="เริ่มเขียนเนื้อหาของบทนี้..."
+              oninput="weOnInput()"
+              onmouseup="showInlineFmtBarOnSelect()"
+              onkeyup="showInlineFmtBarOnSelect()"
+            ></div>
             </div><!-- /panel-section-body -->
           </div>
           <div class="panel-section">
@@ -3393,28 +3442,28 @@ window.__docxLoadFailed = true; // always use our own writer
 <input type="file" id="freeImgInput" accept="image/*" style="display:none" onchange="handleFreeImgUpload(this)">
 
 <!-- Toast -->
-
+<div class="toast" id="toast"></div>
 
 <!-- Inline Format Bar (shows on text selection in editor) -->
 <div class="inline-fmt-bar" id="inlineFmtBar">
-  <button class="ifb-btn" title="ตัวหนา (Bold)" onclick="applyInlineFmt('bold')"><b>B</b></button>
-  <button class="ifb-btn" title="ตัวเอียง (Italic)" onclick="applyInlineFmt('italic')"><i>I</i></button>
-  <button class="ifb-btn" title="ขีดเส้นใต้" onclick="applyInlineFmt('underline')"><u>U</u></button>
+  <button class="ifb-btn" title="ตัวหนา (Bold)" onmousedown="event.preventDefault();applyInlineFmt('bold')"><b>B</b></button>
+  <button class="ifb-btn" title="ตัวเอียง (Italic)" onmousedown="event.preventDefault();applyInlineFmt('italic')"><i>I</i></button>
+  <button class="ifb-btn" title="ขีดเส้นใต้" onmousedown="event.preventDefault();applyInlineFmt('underline')"><u>U</u></button>
   <div class="ifb-sep"></div>
-  <button class="ifb-btn" title='เน้นคำพูด (« »)' onclick="applyInlineFmt('quote')">«»</button>
-  <button class="ifb-btn" title="เน้นสำคัญ (Highlight)" onclick="applyInlineFmt('highlight')">✦</button>
-  <button class="ifb-btn" title="คำสั่ง/โค้ด" onclick="applyInlineFmt('cmd')">[ ]</button>
+  <button class="ifb-btn" title='เน้นคำพูด (« »)' onmousedown="event.preventDefault();applyInlineFmt('quote')">«»</button>
+  <button class="ifb-btn" title="เน้นสำคัญ (Highlight)" onmousedown="event.preventDefault();applyInlineFmt('highlight')">✦</button>
+  <button class="ifb-btn" title="คำสั่ง/โค้ด" onmousedown="event.preventDefault();applyInlineFmt('cmd')">[ ]</button>
   <div class="ifb-sep"></div>
-  <input class="ifb-size" type="number" id="ifbSize" value="15" min="8" max="36" title="ขนาดตัวอักษร (px)" onkeydown="if(event.key==='Enter')applyInlineFmt('size')">
-  <button class="ifb-btn" title="ใช้ขนาดนี้กับข้อความที่เลือก" onclick="applyInlineFmt('size')" style="font-size:10px;background:rgba(139,69,19,0.3);color:#f0c080">px✓</button>
+  <input class="ifb-size" type="number" id="ifbSize" value="15" min="8" max="36" title="ขนาดตัวอักษร (px)" onkeydown="if(event.key==='Enter'){event.preventDefault();applyInlineFmt('size');}">
+  <button class="ifb-btn" title="ใช้ขนาดนี้กับข้อความที่เลือก" onmousedown="event.preventDefault();applyInlineFmt('size')" style="font-size:10px;background:rgba(139,69,19,0.3);color:#f0c080">px✓</button>
   <div class="ifb-sep"></div>
   <label title="เลือกสีตัวอักษร" style="cursor:pointer;display:flex;align-items:center;gap:3px">
     <input type="color" id="ifbColor" value="#8b4513" style="display:none" oninput="document.getElementById('ifbColorSwatch').style.background=this.value">
-    <div class="ifb-color" id="ifbColorSwatch" style="background:#8b4513" onclick="document.getElementById('ifbColor').click()" title="คลิกเลือกสี"></div>
+    <div class="ifb-color" id="ifbColorSwatch" style="background:#8b4513" onmousedown="event.preventDefault();document.getElementById('ifbColor').click()" title="คลิกเลือกสี"></div>
   </label>
-  <button class="ifb-btn" title="ใช้สีนี้กับข้อความที่เลือก" onclick="applyInlineFmt('color')" style="font-size:10px;background:rgba(139,69,19,0.3);color:#f0c080">A✓</button>
+  <button class="ifb-btn" title="ใช้สีนี้กับข้อความที่เลือก" onmousedown="event.preventDefault();applyInlineFmt('color')" style="font-size:10px;background:rgba(139,69,19,0.3);color:#f0c080">A✓</button>
   <div class="ifb-sep"></div>
-  <button class="ifb-btn" title="ล้างการจัดรูปแบบ" onclick="applyInlineFmt('clear')" style="font-size:10px">✕</button>
+  <button class="ifb-btn" title="ล้างการจัดรูปแบบ" onmousedown="event.preventDefault();applyInlineFmt('clear')" style="font-size:10px">✕</button>
 </div>
 
 <!-- Hidden file input for load project -->
@@ -3802,15 +3851,14 @@ function toggleFocusMode() {
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape' && document.body.classList.contains('focus-mode')) toggleFocusMode();
   if (e.key === 'Escape' && document.getElementById('searchModal').classList.contains('open')) closeSearch();
-  // Undo / Redo
+  // Undo / Redo — let browser handle inside WYSIWYG editor, intercept elsewhere
   if ((e.ctrlKey || e.metaKey) && e.key === 'z' && !e.shiftKey) {
-    const ta = document.getElementById('chapterEditor');
-    // Only intercept when not focused in textarea (let native undo work there)
-    if (document.activeElement !== ta) { e.preventDefault(); historyUndo(); }
+    const ed = document.getElementById('chapterEditor');
+    if (document.activeElement !== ed) { e.preventDefault(); historyUndo(); }
   }
   if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.key === 'z' && e.shiftKey))) {
-    const ta = document.getElementById('chapterEditor');
-    if (document.activeElement !== ta) { e.preventDefault(); historyRedo(); }
+    const ed = document.getElementById('chapterEditor');
+    if (document.activeElement !== ed) { e.preventDefault(); historyRedo(); }
   }
 });
 
@@ -3843,7 +3891,7 @@ function selectChapter(id) {
   const ch = chapters.find(c => c.id === id);
   if (!ch) return;
   document.getElementById('chapterTitleInput').value = ch.title;
-  document.getElementById('chapterEditor').value = ch.content;
+  weLoad(ch.content);
   document.getElementById('chapterNote').value = ch.note || '';
   // Chapter image
   const wrap = document.getElementById('chImgPreviewWrap');
@@ -3886,34 +3934,354 @@ function updateChapterTitle(val) {
   if (typeof autoSaveDebounce === 'function') autoSaveDebounce();
 }
 
-function updateChapterContent(val) {
-  const ch = chapters.find(c => c.id === currentChapterId);
-  if (ch) { ch.content = val; updatePreview(); updateStats(); }
-  recordHistoryDebounced();
-  if (typeof autoSaveDebounce === 'function') autoSaveDebounce();
+// ═══════════════════════════════════════════════
+// WYSIWYG EDITOR ENGINE
+// ═══════════════════════════════════════════════
+
+function weGetEditor() { return document.getElementById('chapterEditor'); }
+
+// Convert editor HTML → plain markup string (for storage & preview)
+function weToMarkup(html) {
+  // Use a temp div to parse
+  const d = document.createElement('div');
+  d.innerHTML = html;
+  // Convert each block to a line
+  const lines = [];
+  d.childNodes.forEach(node => {
+    if (node.nodeType === Node.TEXT_NODE) {
+      const t = node.textContent;
+      if (t.trim()) lines.push(t);
+    } else if (node.classList && node.classList.contains('we-pagebreak')) {
+      lines.push('[PAGE_BREAK]');
+    } else {
+      lines.push(weNodeToMarkup(node));
+    }
+  });
+  return lines.join('\n');
 }
 
-// ── Tab key → ย่อหน้าแบบไทย ──
+function weNodeToMarkup(node) {
+  if (node.nodeType === Node.TEXT_NODE) return node.textContent;
+  if (node.classList && node.classList.contains('we-pagebreak')) return '[PAGE_BREAK]';
+  let text = '';
+  node.childNodes.forEach(c => { text += weNodeToMarkup(c); });
+  const tag = node.tagName ? node.tagName.toLowerCase() : '';
+  const style = node.getAttribute ? (node.getAttribute('style') || '') : '';
+  if (tag === 'strong' || tag === 'b') return `**${text}**`;
+  if (tag === 'em' || tag === 'i') return `_${text}_`;
+  if (tag === 'u') return `__${text}__`;
+  if (tag === 'mark') return `==${text}==`;
+  if (tag === 'span') {
+    const colorM = style.match(/color:\s*([#\w]+)/);
+    const sizeM = style.match(/font-size:\s*(\d+)px/);
+    const fontM = style.match(/font-family:\s*'?([^',;]+)/);
+    if (colorM && !sizeM) return `<color:${colorM[1]}>${text}</color>`;
+    if (sizeM) return `<size:${sizeM[1]}>${text}</size>`;
+    if (fontM) return `<font:${fontM[1].trim()}>${text}</font>`;
+    // gold italic («»)
+    if (style.includes('var(--gold)')) return `«${text}»`;
+    return text;
+  }
+  if (tag === 'code') return `\`${text}\``;
+  if (tag === 'br') return '\n';
+  return text;
+}
+
+// Convert markup string → editor HTML
+function weFromMarkup(markup) {
+  const lines = markup.split('\n');
+  return lines.map(line => {
+    if (line.trim() === '[PAGE_BREAK]') {
+      return `<div class="we-pagebreak" contenteditable="false">— ↵ ตัดหน้า —</div>`;
+    }
+    if (!line.trim()) return `<p><br></p>`;
+    return `<p>${parseRichText(line)}</p>`;
+  }).join('');
+}
+
+// Load chapter content into WYSIWYG editor
+function weLoad(markup) {
+  const ed = weGetEditor();
+  if (!ed) return;
+  ed.innerHTML = markup ? weFromMarkup(markup) : '';
+  // Place cursor at end
+}
+
+// On editor input — sync to chapter data
+function weOnInput() {
+  const ed = weGetEditor();
+  if (!ed) return;
+  const markup = weToMarkup(ed.innerHTML);
+  const ch = chapters.find(c => c.id === currentChapterId);
+  if (ch) {
+    ch.content = markup;
+    _fastUpdatePageBodies(currentChapterId, markup);
+    updateStats();
+  }
+  recordHistoryDebounced();
+  if (typeof autoSaveDebounce === 'function') autoSaveDebounce();
+  _scheduleFullRender();
+}
+
+// Apply rich-text format to current selection
+function weFormat(type) {
+  const ed = weGetEditor();
+  if (!ed) return;
+  ed.focus();
+  const sel = window.getSelection();
+  if (!sel || sel.rangeCount === 0 || sel.isCollapsed) {
+    showToast('กรุณาคลุมข้อความก่อน'); return;
+  }
+  const range = sel.getRangeAt(0);
+  const selectedText = range.toString();
+  if (!selectedText) { showToast('กรุณาคลุมข้อความก่อน'); return; }
+
+  let node;
+  switch(type) {
+    case 'bold': {
+      node = document.createElement('strong');
+      node.style.fontWeight = '700';
+      node.style.color = 'var(--accent)';
+      break;
+    }
+    case 'italic': {
+      node = document.createElement('em');
+      break;
+    }
+    case 'underline': {
+      node = document.createElement('u');
+      break;
+    }
+    case 'highlight': {
+      node = document.createElement('mark');
+      node.style.cssText = 'background:rgba(201,162,39,0.25);border-radius:2px;padding:0 2px';
+      break;
+    }
+    case 'color': {
+      const color = document.getElementById('ifbColor')?.value || '#8b4513';
+      node = document.createElement('span');
+      node.style.color = color;
+      document.getElementById('ifbColorSwatch').style.background = color;
+      break;
+    }
+    case 'size': {
+      const sz = parseInt(document.getElementById('ifbSize')?.value) || 15;
+      node = document.createElement('span');
+      node.style.fontSize = sz + 'px';
+      break;
+    }
+    case 'quote': {
+      node = document.createElement('span');
+      node.style.cssText = 'font-style:italic;color:var(--gold)';
+      node.textContent = `«${selectedText}»`;
+      range.deleteContents();
+      range.insertNode(node);
+      sel.removeAllRanges();
+      weOnInput(); hideInlineFmtBar(); return;
+    }
+    case 'cmd': {
+      node = document.createElement('code');
+      node.style.cssText = 'font-family:monospace;background:rgba(139,69,19,0.1);border-radius:3px;padding:0 4px;font-size:0.88em';
+      break;
+    }
+    case 'clear': {
+      // Unwrap: replace selection with plain text
+      const text = selectedText;
+      range.deleteContents();
+      range.insertNode(document.createTextNode(text));
+      sel.removeAllRanges();
+      weOnInput(); hideInlineFmtBar(); return;
+    }
+    default: return;
+  }
+  if (node) {
+    range.surroundContents(node);
+    sel.removeAllRanges();
+  }
+  weOnInput();
+  hideInlineFmtBar();
+}
+
+// Insert special elements at cursor
+function weInsert(type) {
+  const ed = weGetEditor();
+  if (!ed) return;
+  ed.focus();
+  const sel = window.getSelection();
+  const range = sel && sel.rangeCount > 0 ? sel.getRangeAt(0) : null;
+
+  switch(type) {
+    case 'quote': document.execCommand('insertText', false, '«»'); break;
+    case 'dquote': document.execCommand('insertText', false, '\u201c\u201d'); break;
+    case 'para': document.execCommand('insertParagraph', false); break;
+    case 'break': {
+      const br = document.createElement('p');
+      br.textContent = '— ✦ —';
+      br.style.textAlign = 'center';
+      if (range) { range.collapse(false); range.insertNode(br); range.setStartAfter(br); range.collapse(true); sel.removeAllRanges(); sel.addRange(range); }
+      break;
+    }
+    case 'pagebreak': {
+      const pb = document.createElement('div');
+      pb.className = 'we-pagebreak';
+      pb.contentEditable = 'false';
+      pb.textContent = '— ↵ ตัดหน้า —';
+      const after = document.createElement('p');
+      after.innerHTML = '<br>';
+      if (range) {
+        range.collapse(false);
+        range.insertNode(after);
+        range.insertNode(pb);
+        range.setStart(after, 0); range.collapse(true);
+        sel.removeAllRanges(); sel.addRange(range);
+      }
+      break;
+    }
+  }
+  weOnInput();
+}
+
+// Inline format bar: use weFormat instead of applyInlineFmt for WYSIWYG
+function applyInlineFmt(type) {
+  weFormat(type);
+}
+
+// Apply a specific color to selection (called from format-bar color picker)
+function weFormatColor(color) {
+  const ed = weGetEditor();
+  if (!ed) return;
+  const sel = window.getSelection();
+  if (!sel || sel.isCollapsed || !ed.contains(sel.anchorNode)) return;
+  ed.focus();
+  const range = sel.getRangeAt(0);
+  const node = document.createElement('span');
+  node.style.color = color;
+  try { range.surroundContents(node); } catch(e) {
+    // surroundContents fails on partial selection — use execCommand fallback
+    document.execCommand('foreColor', false, color);
+  }
+  sel.removeAllRanges();
+  weOnInput();
+}
+
+// Apply a specific font-size to selection (called from format-bar size input)
+function weFormatSize(size) {
+  const sz = parseInt(size);
+  if (!sz || sz < 6) return;
+  const ed = weGetEditor();
+  if (!ed) return;
+  const sel = window.getSelection();
+  if (!sel || sel.isCollapsed || !ed.contains(sel.anchorNode)) return;
+  ed.focus();
+  const range = sel.getRangeAt(0);
+  const node = document.createElement('span');
+  node.style.fontSize = sz + 'px';
+  try { range.surroundContents(node); } catch(e) {
+    document.execCommand('fontSize', false, '7');
+    ed.querySelectorAll('font[size="7"]').forEach(f => {
+      f.removeAttribute('size');
+      f.style.fontSize = sz + 'px';
+    });
+  }
+  sel.removeAllRanges();
+  weOnInput();
+}
+
+// ═══════════════════════════════════════════════
+let _renderDebounceTimer = null;
+function _scheduleFullRender() {
+  clearTimeout(_renderDebounceTimer);
+  _renderDebounceTimer = setTimeout(() => { updatePreview(); }, 900);
+}
+
+// Fast partial update: re-render only the page-body paragraphs for current chapter
+function _fastUpdatePageBodies(chId, content) {
+  const paras = content.split('\n').filter(p => p.trim() && p.trim() !== '[PAGE_BREAK]');
+  document.querySelectorAll(`.page-body[data-ch-id="${chId}"]`).forEach(bodyEl => {
+    const pi = parseInt(bodyEl.dataset.pi) || 0;
+    // Collect existing <p> elements and update their innerHTML in-place
+    const pEls = bodyEl.querySelectorAll('p:not([data-placeholder])');
+    // Simple: rebuild innerHTML of body (fast, no layout measurement)
+    const dropCapColor2 = window.dropCapColor || 'var(--accent)';
+    const _dropCap = window.dropCap;
+    const _dropCapFont = window.dropCapFont || 'Playfair Display';
+    const _dropCapSize = window.dropCapSize || 48;
+    const dropCapSpanStyle = _dropCap
+      ? `font-family:'${_dropCapFont}',serif;font-size:${_dropCapSize}px;font-weight:700;line-height:0.75;float:left;margin:2px 6px 0 0;color:${dropCapColor2};display:block;`
+      : null;
+    // Find which paras belong to this page (use existing count as hint)
+    // We only refresh innerHTML of existing paragraphs to avoid layout shift
+    let pIdx = 0;
+    pEls.forEach(pEl => {
+      const para = paras[pIdx];
+      if (para !== undefined) {
+        const isSection = para.trim() === '— ✦ —' || para.trim() === '* * *';
+        if (isSection) {
+          pEl.style.textAlign = 'center';
+          pEl.innerHTML = para;
+        } else if (pIdx === 0 && dropCapSpanStyle && pi === 0) {
+          const parsed = parseRichText(para);
+          const m = parsed.match(/^(<[^>]+>)*(.)/);
+          if (m && m[2]) {
+            const prefix = m[1] || '';
+            pEl.innerHTML = `${prefix}<span style="${dropCapSpanStyle}">${m[2]}</span>${parsed.slice(prefix.length + m[2].length)}`;
+          } else { pEl.innerHTML = parsed; }
+        } else {
+          pEl.innerHTML = parseRichText(para);
+        }
+        pIdx++;
+      }
+    });
+  });
+}
+
+function updateChapterContent(val) {
+  const ch = chapters.find(c => c.id === currentChapterId);
+  if (ch) {
+    ch.content = val;
+    // Instant visual update of existing page bodies (no re-layout)
+    _fastUpdatePageBodies(currentChapterId, val);
+    updateStats();
+  }
+  recordHistoryDebounced();
+  if (typeof autoSaveDebounce === 'function') autoSaveDebounce();
+  // Full re-render (with page-splitting) after user stops typing
+  _scheduleFullRender();
+}
+
+// ── Tab key → ย่อหน้าแบบไทย (WYSIWYG editor) ──
 document.addEventListener('DOMContentLoaded', () => {
-  const ta = document.getElementById('chapterEditor');
-  if (!ta) return;
-  ta.addEventListener('keydown', (e) => {
+  const ed = document.getElementById('chapterEditor');
+  if (!ed) return;
+  ed.addEventListener('keydown', (e) => {
     if (e.key === 'Tab') {
       e.preventDefault();
-      const s = ta.selectionStart, end = ta.selectionEnd;
-      const indent = '\u3000'; // ideographic space (full-width indent)
-      ta.value = ta.value.substring(0, s) + indent + ta.value.substring(end);
-      ta.selectionStart = ta.selectionEnd = s + indent.length;
-      updateChapterContent(ta.value);
+      document.execCommand('insertText', false, '\u3000'); // full-width Thai indent
     }
   });
 });
 
 function addChapter() {
   recordHistory();
+  // Blur any active page-body so renderChapterPages() guard doesn't skip the new chapter
+  if (document.activeElement && document.activeElement.classList.contains('page-body')) {
+    document.activeElement.blur();
+  }
   const newId = Date.now();
   chapters.push({ id: newId, title: 'บทใหม่', content: '', note: '', imageData: null, imageSize: 100 });
+  _forceRenderChapterPages = true;
   selectChapter(newId);
+  // Ensure the chapter list is visible (expand sidebar section if collapsed)
+  const chapterSection = document.getElementById('chapterList')?.closest('.sidebar-section');
+  if (chapterSection && chapterSection.classList.contains('collapsed')) {
+    chapterSection.classList.remove('collapsed');
+  }
+  // On mobile, open left panel if hidden
+  const sidebar = document.querySelector('.sidebar');
+  if (sidebar && sidebar.classList.contains('collapsed-panel')) {
+    togglePanel('left');
+  }
+  showToast('✅ เพิ่มบทใหม่แล้ว — กรุณาแก้ไขชื่อและเนื้อหา');
 }
 
 function deleteChapter(id, e) {
@@ -4206,13 +4574,15 @@ function renderSpecialPages() {
   });
 }
 
+let _forceRenderChapterPages = false;
 function renderChapterPages() {
-  // Don't re-render if user is actively typing in a page-body
-  if (document.activeElement && document.activeElement.classList.contains('page-body')) {
+  // Don't re-render if user is actively typing in a page-body (unless forced)
+  if (!_forceRenderChapterPages && document.activeElement && document.activeElement.classList.contains('page-body')) {
     // Just update stats silently
     updateStats();
     return;
   }
+  _forceRenderChapterPages = false;
   const container = document.getElementById('chapterPages');
   container.innerHTML = '';
   const showHeader = document.getElementById('showHeader').checked;
@@ -4244,42 +4614,124 @@ function renderChapterPages() {
 
   let pageNum = 3; // cover=1, title=2, chapters start at 3
 
-  chapters.forEach((ch, ci) => {
-    const paragraphs = ch.content.split('\n').filter(p => p.trim());
-
-    // Split paragraphs into pages — count lines (wrapping) not raw chars
-    // Each paragraph wraps into ceil(len / charsPerLine) lines + 1 blank line gap
-    const TITLE_RESERVE_LINES = Math.ceil(200 / lineHeightPx) + 1; // lines used by chapter heading block
-    const firstPageLines = Math.max(4, linesPerPage - TITLE_RESERVE_LINES);
-
-    function paraLines(p) {
-      // Count visual lines this paragraph takes, including wrap
-      return Math.max(1, Math.ceil(p.length / charsPerLine)) + 0.4; // +0.4 for paragraph gap
+  // ── Helper: build page-body innerHTML for a given list of paragraphs ──
+  function buildBodyHTML(pgParas, isFirstPage, pageKey, pageFs, pageLh, pageAlign, pageFont, pageDropCap, pageAccent) {
+    const _dcColor = dropCapColor || pageAccent || 'var(--accent)';
+    const dropCapSpanStyle = pageDropCap
+      ? `font-family:'${dropCapFont}',serif;font-size:${dropCapSize}px;font-weight:700;line-height:0.75;float:left;margin:2px 6px 0 0;color:${_dcColor};display:block;`
+      : null;
+    let bodyHtml = `<div class="page-body page-body-${pageKey}" data-ch-id="" data-pi="" contenteditable="false" spellcheck="false" style="font-size:${pageFs}px;line-height:${pageLh};text-align:${pageAlign};font-family:'${pageFont}',sans-serif;outline:none;cursor:text;overflow:hidden;">`;
+    if (pgParas.length === 0 && isFirstPage) {
+      bodyHtml += `<p style="color:#aaa;font-style:italic" data-placeholder="true">คลิกเพื่อพิมพ์เนื้อหาได้เลย...</p>`;
+    } else {
+      pgParas.forEach((p, pIdx) => {
+        const isSection = p.trim() === '— ✦ —' || p.trim() === '* * *';
+        if (isSection) {
+          bodyHtml += `<div style="text-align:center;color:var(--gold);margin:16px 0;letter-spacing:0.4em">${p}</div>`;
+        } else if (pIdx === 0 && dropCapSpanStyle) {
+          const parsed = parseRichText(p);
+          const firstCharMatch = parsed.match(/^(<[^>]+>)*(.)/);
+          if (firstCharMatch && firstCharMatch[2]) {
+            const prefix = firstCharMatch[1] || '';
+            const firstChar = firstCharMatch[2];
+            const rest = parsed.slice(prefix.length + firstChar.length);
+            bodyHtml += `<p style="text-indent:0">${prefix}<span style="${dropCapSpanStyle}">${firstChar}</span>${rest}</p>`;
+          } else {
+            bodyHtml += `<p style="text-indent:0">${parsed}</p>`;
+          }
+        } else {
+          bodyHtml += `<p>${parseRichText(p)}</p>`;
+        }
+      });
     }
+    bodyHtml += '</div>';
+    return bodyHtml;
+  }
 
+  // ── Helper: measure whether paragraphs overflow a page's body area ──
+  // Returns the page content height available and the actual scrollHeight of the body
+  function measureBodyOverflow(pgParas, isFirstPage, ch, pi, pageMv, pageMh, pageFs, pageLh, pageAlign, pageFont, pageDropCap, pageAccent) {
+    const pageKey = `${ch.id}_${pi}`;
+    const PAGE_H = 794;
+    const headerH = showHeader ? 32 : 0;
+    const footerH = showPageNum ? 32 : 0;
+    const availH = PAGE_H - pageMv - (pageMv + 8) - headerH - footerH;
+
+    // Build a temporary off-screen page to measure
+    const ghost = document.createElement('div');
+    ghost.className = 'page page-inner';
+    ghost.style.cssText = `
+      position:absolute; left:-9999px; top:-9999px;
+      width:559px; height:auto;
+      padding:${pageMv}px ${pageMh}px ${pageMv + 8}px;
+      visibility:hidden; pointer-events:none;
+    `;
+    let innerHtml = '';
+    if (showHeader) innerHtml += `<div class="page-header" style="position:relative;height:${headerH}px"></div>`;
+    if (isFirstPage) {
+      innerHtml += `<div class="page-chapter-num" style="font-size:11px;margin-bottom:4px">บทที่</div>`;
+      innerHtml += `<div class="page-chapter-title" style="font-size:22px;font-weight:700;margin-bottom:6px">${ch.title || ''}</div>`;
+      innerHtml += `<div style="height:28px"></div>`; // divider
+    }
+    innerHtml += buildBodyHTML(pgParas, isFirstPage, pageKey, pageFs, pageLh, pageAlign, pageFont, pageDropCap, pageAccent);
+    ghost.innerHTML = innerHtml;
+    document.body.appendChild(ghost);
+    let usedH = 0;
+    try {
+      const bodyEl = ghost.querySelector('.page-body');
+      usedH = bodyEl ? bodyEl.scrollHeight : 0;
+    } finally {
+      document.body.removeChild(ghost);
+    }
+    return { availH, usedH };
+  }
+
+  chapters.forEach((ch, ci) => {
+    // Split by [PAGE_BREAK] markers first (force page breaks)
+    const rawParagraphs = ch.content.split('\n').filter(p => p.trim());
+
+    // ── DOM-based page splitting ──
+    // Build pageGroups by actually measuring overflow using a ghost element
     const pageGroups = [[]];
-    let lineCount = 0;
 
-    const getPageLineLimit = (pgIdx) => {
-      const key = `${ch.id}_${pgIdx}`;
-      const imgs = freeImages[key] || [];
-      const imgLines = imgs.reduce((s, im) => s + Math.ceil((im.h || 0) / lineHeightPx), 0);
-      const base = pgIdx === 0 ? firstPageLines : linesPerPage;
-      return Math.max(4, base - imgLines);
-    };
-
-    paragraphs.forEach((p) => {
-      const pLines = paraLines(p);
-      const curPg = pageGroups.length - 1;
-      const limit = getPageLineLimit(curPg);
-      if (lineCount + pLines > limit && pageGroups[curPg].length > 0) {
-        pageGroups.push([]);
-        lineCount = 0;
+    rawParagraphs.forEach((p) => {
+      // Handle forced page break marker
+      if (p.trim() === '[PAGE_BREAK]') {
+        if (pageGroups[pageGroups.length - 1].length > 0) {
+          pageGroups.push([]);
+        }
+        return;
       }
-      pageGroups[pageGroups.length - 1].push(p);
-      lineCount += pLines;
+
+      const curPgIdx = pageGroups.length - 1;
+      const isFirstPage = curPgIdx === 0;
+      const pageKey = `${ch.id}_${curPgIdx}`;
+      const pageOverride = perPageLayouts[pageKey];
+      const overridePreset = pageOverride ? layoutPresets[pageOverride] : null;
+      const pageMv = overridePreset ? overridePreset.marginV : mv;
+      const pageMh = overridePreset ? overridePreset.marginH : mh;
+      const pageFs = overridePreset ? overridePreset.fontSize : fs;
+      const pageLh = overridePreset ? overridePreset.lineHeight / 100 : lh;
+      const pageAlign = overridePreset ? overridePreset.textAlign : textAlign;
+      const pageFont = overridePreset ? overridePreset.font : bodyFont;
+      const pageDropCap = overridePreset ? overridePreset.dropCap : dropCap;
+      const pageAccent = overridePreset ? overridePreset.accent : null;
+
+      // Try adding this paragraph to the current page
+      const candidate = [...pageGroups[curPgIdx], p];
+      const { availH, usedH } = measureBodyOverflow(
+        candidate, isFirstPage, ch, curPgIdx,
+        pageMv, pageMh, pageFs, pageLh, pageAlign, pageFont, pageDropCap, pageAccent
+      );
+
+      if (usedH > availH && pageGroups[curPgIdx].length > 0) {
+        // Overflow — push paragraph to new page
+        pageGroups.push([p]);
+      } else {
+        pageGroups[curPgIdx].push(p);
+      }
     });
-    if (paragraphs.length === 0) pageGroups[0] = [];
+    if (rawParagraphs.length === 0) pageGroups[0] = [];
 
     pageGroups.forEach((pgParas, pi) => {
       const isFirstPage = pi === 0;
@@ -4338,39 +4790,13 @@ function renderChapterPages() {
         }
       }
 
-      // Drop cap via span injection (works with Thai text, unlike ::first-letter)
-      const _dcColor = dropCapColor || pageAccent || 'var(--accent)';
-      const dropCapSpanStyle = pageDropCap
-        ? `font-family:'${dropCapFont}',serif;font-size:${dropCapSize}px;font-weight:700;line-height:0.75;float:left;margin:2px 6px 0 0;color:${_dcColor};display:block;`
-        : null;
-
-      let bodyHtml = `<div class="page-body page-body-${pageKey}" data-ch-id="${ch.id}" data-pi="${pi}" contenteditable="true" spellcheck="false" style="font-size:${pageFs}px;line-height:${pageLh};text-align:${pageAlign};font-family:'${pageFont}',sans-serif;outline:none;cursor:text;">`;
-      if (pgParas.length === 0 && isFirstPage) {
-        bodyHtml += `<p style="color:#aaa;font-style:italic" data-placeholder="true">คลิกเพื่อพิมพ์เนื้อหาได้เลย...</p>`;
-      } else {
-        pgParas.forEach((p, pIdx) => {
-          const isSection = p.trim() === '— ✦ —' || p.trim() === '* * *';
-          if (isSection) {
-            bodyHtml += `<div style="text-align:center;color:var(--gold);margin:16px 0;letter-spacing:0.4em">${p}</div>`;
-          } else if (pIdx === 0 && dropCapSpanStyle) {
-            // Inject drop cap span around first character (supports Thai)
-            const parsed = parseRichText(p);
-            // Find first visible character (skip leading HTML tags)
-            const firstCharMatch = parsed.match(/^(<[^>]+>)*(.)/);
-            if (firstCharMatch && firstCharMatch[2]) {
-              const prefix = firstCharMatch[1] || '';
-              const firstChar = firstCharMatch[2];
-              const rest = parsed.slice(prefix.length + firstChar.length);
-              bodyHtml += `<p style="text-indent:0">${prefix}<span style="${dropCapSpanStyle}">${firstChar}</span>${rest}</p>`;
-            } else {
-              bodyHtml += `<p style="text-indent:0">${parsed}</p>`;
-            }
-          } else {
-            bodyHtml += `<p>${parseRichText(p)}</p>`;
-          }
-        });
-      }
-      bodyHtml += '</div>';
+      // Build body HTML using shared helper, then patch data attributes
+      let bodyHtml = buildBodyHTML(pgParas, isFirstPage, pageKey, pageFs, pageLh, pageAlign, pageFont, pageDropCap, pageAccent);
+      // Patch: set contenteditable=true and correct data attributes
+      bodyHtml = bodyHtml.replace('contenteditable="false"', 'contenteditable="true"')
+        .replace('data-ch-id=""', `data-ch-id="${ch.id}"`)
+        .replace('data-pi=""', `data-pi="${pi}"`)
+        .replace('overflow:hidden;', '');
       html += bodyHtml;
 
       if (showPageNum) {
@@ -4394,6 +4820,14 @@ function renderChapterPages() {
       // Wire contenteditable page-body → sync back to chapter state
       const bodyEl = page.querySelector('.page-body');
       if (bodyEl) {
+        // Tab key → insert Thai indent (ideographic space) instead of moving focus
+        bodyEl.addEventListener('keydown', (e) => {
+          if (e.key === 'Tab') {
+            e.preventDefault();
+            const indent = '\u3000'; // full-width space (Thai indent)
+            document.execCommand('insertText', false, indent);
+          }
+        });
         // Remove placeholder on focus
         bodyEl.addEventListener('focus', () => {
           const ph = bodyEl.querySelector('[data-placeholder]');
@@ -4508,43 +4942,18 @@ function updateMargins() {
   renderChapterPages();
 }
 
-// ── Editor helpers ──
-function insertText(before, after) {
-  const ta = document.getElementById('chapterEditor');
-  const s = ta.selectionStart, e = ta.selectionEnd;
-  const sel = ta.value.substring(s, e);
-  ta.value = ta.value.substring(0, s) + before + sel + after + ta.value.substring(e);
-  ta.selectionStart = s + before.length;
-  ta.selectionEnd = e + before.length;
-  ta.focus();
-  updateChapterContent(ta.value);
-}
-
-function insertPara() {
-  const ta = document.getElementById('chapterEditor');
-  const s = ta.selectionStart;
-  ta.value = ta.value.substring(0, s) + '\n\n' + ta.value.substring(s);
-  ta.selectionStart = ta.selectionEnd = s + 2;
-  ta.focus();
-  updateChapterContent(ta.value);
-}
-
-function insertBreak() {
-  const ta = document.getElementById('chapterEditor');
-  const s = ta.selectionStart;
-  ta.value = ta.value.substring(0, s) + '\n\n— ✦ —\n\n' + ta.value.substring(s);
-  ta.selectionStart = ta.selectionEnd = s + 10;
-  ta.focus();
-  updateChapterContent(ta.value);
-}
-
-function insertItalic() {
-  const ta = document.getElementById('chapterEditor');
-  const s = ta.selectionStart, e = ta.selectionEnd;
-  const sel = ta.value.substring(s, e) || 'ข้อความ';
-  ta.value = ta.value.substring(0, s) + '*' + sel + '*' + ta.value.substring(e);
-  ta.focus();
-  updateChapterContent(ta.value);
+// ── Editor helpers (WYSIWYG) ──
+function insertText(before, after) { weInsert('quote'); } // legacy fallback
+function insertPara() { weInsert('para'); }
+function insertBreak() { weInsert('break'); }
+function insertPageBreak() { weInsert('pagebreak'); showToast('📄 แทรกตัดหน้าใหม่แล้ว'); }
+function insertItalic() { weFormat('italic'); }
+function insertBold() { weFormat('bold'); }
+function insertHighlight() { weFormat('highlight'); }
+function insertCmd() { weFormat('cmd'); }
+function rbInsert(type) {
+  if (type === 'break') weInsert('break');
+  else if (type === 'para') weInsert('para');
 }
 
 // ── Tabs ──
@@ -4610,6 +5019,7 @@ function _downloadBlob(blob, filename) {
 
 function showToast(msg) {
   const t = document.getElementById('toast');
+  if (!t) { console.log('[Toast]', msg); return; }
   t.textContent = msg;
   t.classList.add('show');
   setTimeout(() => t.classList.remove('show'), 2500);
@@ -4618,12 +5028,23 @@ function showToast(msg) {
 // ── Export PDF (html2canvas method for correct Thai font) ──
 async function exportPDF() {
   showToast('⏳ กำลังสร้าง PDF... อาจใช้เวลาสักครู่');
+  // Clean up any ghost measurement elements that may have leaked
+  document.querySelectorAll('.page.page-inner[style*="-9999px"]').forEach(el => el.remove());
   try {
     if (!window.html2canvas) {
       await new Promise((resolve, reject) => {
         const s = document.createElement('script');
         s.src = 'https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js';
         s.onload = resolve; s.onerror = () => reject(new Error('โหลด html2canvas ไม่ได้ — ต้องใช้ Internet'));
+        document.head.appendChild(s);
+      });
+    }
+
+    if (!window.jspdf) {
+      await new Promise((resolve, reject) => {
+        const s = document.createElement('script');
+        s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+        s.onload = resolve; s.onerror = () => reject(new Error('โหลด jsPDF ไม่ได้ — ต้องใช้ Internet'));
         document.head.appendChild(s);
       });
     }
@@ -4650,18 +5071,33 @@ async function exportPDF() {
     document.querySelectorAll('.page-label').forEach(l => { prevLabelDisplay.push([l, l.style.display]); l.style.display = 'none'; });
 
     let first = true;
+    // Temporarily reset zoom transform so html2canvas captures at 1:1
+    const zoomWrap = document.getElementById('zoomWrap');
+    const prevTransform = zoomWrap ? zoomWrap.style.transform : '';
+    if (zoomWrap) zoomWrap.style.transform = 'none';
+
     for (const pageEl of allPageEls) {
+      const rect = pageEl.getBoundingClientRect();
       const canvas = await html2canvas(pageEl, {
         scale: 2, useCORS: true, allowTaint: true,
         backgroundColor: '#fffef9', logging: false,
         width: 559, height: 794,
-        windowWidth: 559, windowHeight: 794
+        windowWidth: 559, windowHeight: 794,
+        scrollX: -window.scrollX,
+        scrollY: -window.scrollY,
+        x: 0, y: 0,
+        ignoreElements: el => el.classList?.contains('page-label') ||
+                               el.classList?.contains('page-layout-pill') ||
+                               el.id === 'inlineFmtBar'
       });
       const imgData = canvas.toDataURL('image/jpeg', 0.92);
       if (!first) pdf.addPage();
       pdf.addImage(imgData, 'JPEG', 0, 0, W, H);
       first = false;
     }
+
+    // Restore zoom transform
+    if (zoomWrap) zoomWrap.style.transform = prevTransform;
 
     // Restore display states
     allPageEls.forEach((p, i) => { p.style.display = prevDisplay[i]; });
@@ -4713,7 +5149,7 @@ async function exportDOCX_fallback() {
   chapters.forEach((ch, i) => {
     bodyXml += p('บทที่ ' + (i+1), { bold: true, sz: 18, color: '8b4513', before: 480 });
     bodyXml += p(ch.title || 'บทที่ ' + (i+1), { bold: true, sz: 32, before: 100 });
-    const paras = ch.content.split('\n').filter(x => x.trim());
+    const paras = ch.content.split('\n').filter(x => x.trim() && x.trim() !== '[PAGE_BREAK]');
     if (!paras.length) bodyXml += p('(ยังไม่มีเนื้อหา)', { italic: true, color: 'aaaaaa' });
     else paras.forEach(para => { bodyXml += p(para, { sz: 24 }); });
     if (i < chapters.length - 1) bodyXml += pageBreak();
@@ -5119,97 +5555,52 @@ function wrapSelectedText(style) {
   updateChapterContent(ta.value);
 }
 
-// ── Insert bold ──
-function insertBold() {
-  const ta = document.getElementById('chapterEditor');
-  const s = ta.selectionStart, e = ta.selectionEnd;
-  const sel = ta.value.substring(s, e) || 'ข้อความ';
-  ta.value = ta.value.substring(0, s) + '**' + sel + '**' + ta.value.substring(e);
-  ta.focus();
-  updateChapterContent(ta.value);
-}
-
-function insertHighlight() {
-  const ta = document.getElementById('chapterEditor');
-  const s = ta.selectionStart, e = ta.selectionEnd;
-  const sel = ta.value.substring(s, e) || 'ข้อความ';
-  ta.value = ta.value.substring(0, s) + '==' + sel + '==' + ta.value.substring(e);
-  ta.focus();
-  updateChapterContent(ta.value);
-}
-
-function insertCmd() {
-  const ta = document.getElementById('chapterEditor');
-  const s = ta.selectionStart, e = ta.selectionEnd;
-  const sel = ta.value.substring(s, e) || 'คำสั่ง';
-  ta.value = ta.value.substring(0, s) + '`' + sel + '`' + ta.value.substring(e);
-  ta.focus();
-  updateChapterContent(ta.value);
-}
-
-// ── Inline format bar (floats on selection) ──
-function applyInlineFmt(type) {
-  const ta = document.getElementById('chapterEditor');
-  const s = ta.selectionStart, e = ta.selectionEnd;
-  const sel = ta.value.substring(s, e);
-  if (!sel && type !== 'clear') { showToast('กรุณาคลุมข้อความก่อน'); return; }
-  recordHistory();
-  let wrapped = sel;
-  switch(type) {
-    case 'bold': wrapped = `**${sel}**`; break;
-    case 'italic': wrapped = `_${sel}_`; break;
-    case 'underline': wrapped = `__${sel}__`; break;
-    case 'quote': wrapped = `«${sel}»`; break;
-    case 'highlight': wrapped = `==${sel}==`; break;
-    case 'cmd': wrapped = `\`${sel}\``; break;
-    case 'color': {
-      const color = document.getElementById('ifbColor').value;
-      document.getElementById('ifbColorSwatch').style.background = color;
-      wrapped = `<color:${color}>${sel}</color>`; break;
-    }
-    case 'size': {
-      const sz = parseInt(document.getElementById('ifbSize').value) || 15;
-      wrapped = `<size:${sz}>${sel}</size>`; break;
-    }
-    case 'clear': wrapped = sel.replace(/\*\*|_|==|`|«|»/g, ''); break;
-    default: wrapped = sel;
-  }
-  ta.value = ta.value.substring(0, s) + wrapped + ta.value.substring(e);
-  ta.selectionStart = s; ta.selectionEnd = s + wrapped.length;
-  ta.focus();
-  updateChapterContent(ta.value);
-  hideInlineFmtBar();
-}
 
 let inlineFmtBarTimer;
 function showInlineFmtBarOnSelect() {
   clearTimeout(inlineFmtBarTimer);
   inlineFmtBarTimer = setTimeout(() => {
-    const ta = document.getElementById('chapterEditor');
-    if (!ta) return;
-    const sel = ta.value.substring(ta.selectionStart, ta.selectionEnd);
+    const sel = window.getSelection();
     const bar = document.getElementById('inlineFmtBar');
-    if (sel.length > 0) {
-      // Use a hidden span to measure approximate selection position
-      const rect = ta.getBoundingClientRect();
-      // Place bar at top-center of textarea, but clamped to viewport
-      const barW = 340;
-      let left = rect.left + rect.width / 2 - barW / 2;
-      let top = rect.top - 44; // above textarea
-      if (top < 60) top = rect.top + 8; // if too high, place inside
-      left = Math.max(8, Math.min(window.innerWidth - barW - 8, left));
-      bar.style.top = top + 'px';
-      bar.style.left = left + 'px';
+    if (!bar) return;
+    if (sel && !sel.isCollapsed && sel.toString().length > 0) {
+      // Check selection is inside chapterEditor
+      const ed = weGetEditor();
+      if (!ed) { hideInlineFmtBar(); return; }
+      const anchorNode = sel.anchorNode;
+      if (!ed.contains(anchorNode)) { hideInlineFmtBar(); return; }
+      // Position near selection (bar is position:fixed — no scrollY offset needed)
+      const range = sel.getRangeAt(0);
+      const rect = range.getBoundingClientRect();
+      // Measure actual bar width after show
       bar.classList.add('show');
+      const barW = bar.offsetWidth || 360;
+      let left = rect.left + rect.width / 2 - barW / 2;
+      let top = rect.top - barW * 0.14 - 10; // ~50px above selection
+      if (top < 56) top = rect.bottom + 8;   // flip below if near top
+      left = Math.max(8, Math.min(window.innerWidth - barW - 8, left));
+      top  = Math.max(8, Math.min(window.innerHeight - 60, top));
+      bar.style.top  = top  + 'px';
+      bar.style.left = left + 'px';
     } else {
       hideInlineFmtBar();
     }
-  }, 150);
+  }, 80);
 }
 
 function hideInlineFmtBar() {
   document.getElementById('inlineFmtBar')?.classList.remove('show');
 }
+
+// Hide inline fmt bar when clicking outside editor or bar
+document.addEventListener('mousedown', (e) => {
+  const bar = document.getElementById('inlineFmtBar');
+  const ed  = document.getElementById('chapterEditor');
+  if (!bar) return;
+  if (bar.contains(e.target)) return; // clicked inside bar — let button work
+  if (ed && ed.contains(e.target)) return; // still inside editor
+  hideInlineFmtBar();
+}, true);
 
 // ── Rich-text parser: convert markdown-ish markup to HTML ──
 function parseRichText(text) {
@@ -5295,7 +5686,7 @@ function updateRightPanelContext() {
         // silently load chapter into editor without page-jumping
         currentChapterId = ch.id;
         document.getElementById('chapterTitleInput').value = ch.title;
-        document.getElementById('chapterEditor').value = ch.content;
+        weLoad(ch.content);
         document.getElementById('chapterNote').value = ch.note || '';
         const wrap = document.getElementById('chImgPreviewWrap');
         const drop = document.getElementById('chImgDrop');
@@ -5783,28 +6174,22 @@ function ctxSetColor(color) {
 }
 
 function ctxSetFontSize(val) {
-  const ta = document.getElementById('chapterEditor');
-  const s = ta.selectionStart, e2 = ta.selectionEnd;
-  const sel = ta.value.substring(s, e2);
-  if (!sel) { showToast('คลุมข้อความก่อนตั้งขนาด'); return; }
-  const wrapped = `<size:${val}>${sel}</size>`;
-  ta.value = ta.value.substring(0, s) + wrapped + ta.value.substring(e2);
-  ta.selectionStart = s; ta.selectionEnd = s + wrapped.length;
-  ta.focus();
-  updateChapterContent(ta.value);
+  document.getElementById('ifbSize').value = val;
+  weFormat('size');
   closeCtxMenu();
 }
 
 function ctxSetFont(font) {
-  const ta = document.getElementById('chapterEditor');
-  const s = ta.selectionStart, e2 = ta.selectionEnd;
-  const sel = ta.value.substring(s, e2);
-  if (!sel) { showToast('คลุมข้อความก่อนตั้งฟอนต์'); return; }
-  const wrapped = `<font:${font}>${sel}</font>`;
-  ta.value = ta.value.substring(0, s) + wrapped + ta.value.substring(e2);
-  ta.selectionStart = s; ta.selectionEnd = s + wrapped.length;
-  ta.focus();
-  updateChapterContent(ta.value);
+  const ed = weGetEditor();
+  if (!ed) return;
+  ed.focus();
+  const sel = window.getSelection();
+  if (!sel || sel.isCollapsed) { showToast('คลุมข้อความก่อนตั้งฟอนต์'); return; }
+  const range = sel.getRangeAt(0);
+  const node = document.createElement('span');
+  node.style.fontFamily = `'${font}', sans-serif`;
+  try { range.surroundContents(node); } catch(e) {}
+  weOnInput();
   closeCtxMenu();
 }
 
@@ -5972,9 +6357,8 @@ function pedApplyToChapter() {
   allParas.splice(start, count, ...newParas);
   ch.content = allParas.join('\n\n');
 
-  // Refresh editor textarea
-  const ta = document.getElementById('chapterEditor');
-  if (ta && ch.id === currentChapterId) ta.value = ch.content;
+  // Refresh WYSIWYG editor
+  if (ch.id === currentChapterId) weLoad(ch.content);
   _pedCurrentPageParas = newParas;
 
   updatePreview();
@@ -6089,7 +6473,7 @@ function _restoreSnapshot(snap) {
     const editorEl = document.getElementById('chapterEditor');
     const noteEl = document.getElementById('chapterNote');
     if (titleEl) titleEl.value = ch.title;
-    if (editorEl) editorEl.value = ch.content;
+    if (document.getElementById('chapterEditor')) weLoad(ch.content);
     if (noteEl) noteEl.value = ch.note || '';
     const wrap = document.getElementById('chImgPreviewWrap');
     const drop = document.getElementById('chImgDrop');
@@ -6573,26 +6957,6 @@ function rbToggleDropCap(cb) {
   renderChapterPages();
 }
 
-function rbInsert(type) {
-  const ta = document.getElementById('chapterEditor');
-  if (!ta) return;
-  const s = ta.selectionStart, e = ta.selectionEnd;
-  const sel = ta.value.substring(s, e);
-  let ins = '';
-  switch (type) {
-    case 'quote':     ins = sel ? `«${sel}»` : '«»'; break;
-    case 'curly':     ins = sel ? `\u201c${sel}\u201d` : '\u201c\u201d'; break;
-    case 'break':     ins = '\n\n— ✦ —\n\n'; break;
-    case 'para':      ins = '\n\n'; break;
-    case 'bold':      ins = sel ? `**${sel}**` : '**ข้อความ**'; break;
-    case 'italic':    ins = sel ? `_${sel}_` : '_ข้อความ_'; break;
-    case 'highlight': ins = sel ? `==${sel}==` : '==ข้อความ=='; break;
-  }
-  ta.value = ta.value.substring(0, s) + ins + ta.value.substring(e);
-  ta.selectionStart = ta.selectionEnd = s + ins.length;
-  ta.focus(); updateChapterContent(ta.value);
-}
-
 function rbInsertChapterImage() {
   document.getElementById('chImgDrop')?.querySelector('input[type=file]')?.click();
 }
@@ -6797,13 +7161,14 @@ function syncPageBodyToChapter(bodyEl, chapterId) {
 
   ch.content = newContent;
 
-  // Sync to right-panel textarea if this chapter is selected
+  // Sync to WYSIWYG editor if this chapter is selected
   if (currentChapterId === chapterId) {
-    const ta = document.getElementById('chapterEditor');
-    if (ta && ta.value !== newContent) {
-      const scrollTop = ta.scrollTop;
-      ta.value = newContent;
-      ta.scrollTop = scrollTop;
+    const ed = document.getElementById('chapterEditor');
+    if (ed) {
+      const currentMarkup = weToMarkup(ed.innerHTML);
+      if (currentMarkup !== newContent) {
+        weLoad(newContent);
+      }
     }
   }
 
@@ -7056,7 +7421,7 @@ function exportEPUB() {
   // Build chapter HTML files
   const chapterFiles = [];
   chapters.forEach((ch, i) => {
-    const paras = (ch.content || '').split('\n').filter(p => p.trim());
+    const paras = (ch.content || '').split('\n').filter(p => p.trim() && p.trim() !== '[PAGE_BREAK]');
     const bodyHtml = paras.map(p => `<p>${p.replace(/[<>&]/g,c=>({'<':'&lt;','>':'&gt;','&':'&amp;'}[c]))}</p>`).join('\n');
     const fname = `chapter${i+1}.xhtml`;
     chapterFiles.push({
@@ -7153,14 +7518,20 @@ p:first-of-type { text-indent: 0; }`;
   }
   function makeEpubZip(fileList) {
     const parts=[],centralDir=[];let offset=0;
-    for(const[name,content] of fileList){
+    for(let fi=0;fi<fileList.length;fi++){
+      const [name,content]=fileList[fi];
+      const isMime = name === 'mimetype';
       const data=enc.encode(content);
       const crc=crc32(data);
       const nameBytes=enc.encode(name);
+      // mimetype must be stored uncompressed (method=0, no flags)
       const stored=new Uint8Array(30+nameBytes.length+data.length);
       const dv=new DataView(stored.buffer);
-      dv.setUint32(0,0x04034b50,true);dv.setUint16(4,20,true);dv.setUint16(6,0,true);
-      dv.setUint16(8,0,true);dv.setUint16(10,0,true);dv.setUint16(12,0,true);
+      dv.setUint32(0,0x04034b50,true);
+      dv.setUint16(4,20,true);  // version needed
+      dv.setUint16(6,0,true);   // flags
+      dv.setUint16(8,0,true);   // compression: 0=store
+      dv.setUint16(10,0,true);dv.setUint16(12,0,true);
       dv.setUint32(14,crc,true);dv.setUint32(18,data.length,true);dv.setUint32(22,data.length,true);
       dv.setUint16(26,nameBytes.length,true);dv.setUint16(28,0,true);
       stored.set(nameBytes,30);stored.set(data,30+nameBytes.length);
