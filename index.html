@@ -6,6 +6,7 @@
 <title>Ebook Editor — A5 Novel</title>
 <link href="https://fonts.googleapis.com/css2?family=Sarabun:ital,wght@0,300;0,400;0,600;0,700;1,400&family=Kanit:ital,wght@0,300;0,400;0,600;1,400&family=Prompt:ital,wght@0,300;0,400;0,600;1,400&family=Mitr:wght@300;400;600&family=Charm:wght@400;700&family=Noto+Serif+Thai:wght@300;400;600;700&family=Playfair+Display:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
 <script>
 // docx export uses built-in XML writer (reliable on Android/offline)
 window.__docxLoadFailed = true; // always use our own writer
@@ -330,9 +331,24 @@ window.__docxLoadFailed = true; // always use our own writer
   .chapter-item .ch-num { font-size: 10px; background: var(--panel-bg); width: 20px; height: 20px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-weight: 700; color: var(--ink-muted); flex-shrink: 0; }
   .chapter-item.active .ch-num { background: var(--accent); color: #fff; }
   .chapter-item .ch-title { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .chapter-item .ch-title-input {
+    flex: 1; border: 1px solid var(--accent); border-radius: 3px;
+    padding: 1px 5px; font-size: 12px; font-family: 'Sarabun', sans-serif;
+    color: var(--ink); background: #fff; outline: none; min-width: 0;
+  }
   .chapter-item .ch-del { opacity: 0; color: var(--ink-faint); cursor: pointer; font-size: 16px; line-height: 1; padding: 2px 4px; border-radius: 2px; }
   .chapter-item:hover .ch-del { opacity: 1; }
   .chapter-item .ch-del:hover { color: #c0392b; background: rgba(192,57,43,0.1); }
+  .chapter-item .ch-drag { opacity: 0; cursor: grab; color: var(--ink-faint); font-size: 14px; line-height: 1; padding: 2px 2px; flex-shrink: 0; }
+  .chapter-item:hover .ch-drag { opacity: 1; }
+  .ch-move-btns { display: flex; flex-direction: column; gap: 1px; flex-shrink: 0; }
+  .ch-move-btn { background: none; border: none; cursor: pointer; color: var(--ink-faint); font-size: 9px; line-height: 1; padding: 1px 3px; border-radius: 2px; transition: all 0.12s; }
+  .ch-move-btn:hover { color: var(--accent); background: rgba(139,69,19,0.12); }
+  .ch-edit-btn { opacity: 0; background: none; border: none; cursor: pointer; color: var(--ink-faint); font-size: 12px; line-height: 1; padding: 2px 4px; border-radius: 2px; transition: all 0.12s; flex-shrink: 0; }
+  .chapter-item:hover .ch-edit-btn { opacity: 1; }
+  .ch-edit-btn:hover { color: var(--accent); background: rgba(139,69,19,0.12); }
+  .chapter-item.drag-over { border: 1.5px dashed var(--accent); background: rgba(139,69,19,0.06); }
+  .chapter-item.dragging { opacity: 0.4; }
   .btn-add-chapter {
     width: 100%; padding: 7px; border: 1.5px dashed var(--border-dark); border-radius: 4px;
     background: transparent; color: var(--ink-muted); font-family: 'Sarabun', sans-serif;
@@ -487,8 +503,8 @@ window.__docxLoadFailed = true; // always use our own writer
   }
   /* Suppress ugly browser caret color */
   .page-body[contenteditable] { caret-color: var(--accent); }
-  /* paragraph cursor */
-  .page-body p { cursor: text; }
+  /* paragraph cursor + consistent margin for accurate height estimation */
+  .page-body p { cursor: text; margin: 0 0 0.35em 0; }
   /* Drop cap applied dynamically per page via .page-body-KEY class */
   .page-number {
     position: absolute; bottom: 28px; width: 100%;
@@ -517,6 +533,20 @@ window.__docxLoadFailed = true; // always use our own writer
   .title-page-author strong { font-weight: 700; }
   .title-page-publisher { position: absolute; bottom: 52px; font-size: 11px; color: var(--ink-faint); letter-spacing: 0.12em; text-transform: uppercase; }
   .title-page-year { font-size: 12px; color: var(--ink-muted); margin-top: 6px; }
+
+  /* Title page layout variants */
+  .page-title-page.tp-left { align-items: flex-start; text-align: left; }
+  .page-title-page.tp-left .title-page-line { margin: 0 0 32px; }
+  .page-title-page.tp-left .title-page-publisher { left: 52px; right: auto; }
+  .page-title-page.tp-bottom { justify-content: flex-end; padding-bottom: 80px; }
+  .page-title-page.tp-bottom .title-page-ornament { display: none; }
+
+  /* Chapter title inline edit */
+  .page-chapter-title[contenteditable="true"] { cursor: text; border-radius: 3px; }
+  .page-chapter-title[contenteditable="true"]:hover { outline: 1.5px dashed rgba(139,69,19,0.3); }
+  .page-chapter-title[contenteditable="true"]:focus { outline: 1.5px dashed rgba(139,69,19,0.6) !important; }
+  .ch-title-edit-hint { font-size:9px; color:var(--ink-faint); letter-spacing:0.06em; position:absolute; right:0; top:0; pointer-events:none; opacity:0; transition:opacity 0.2s; }
+  .page-inner:hover .ch-title-edit-hint { opacity:1; }
 
   /* Right panel */
   .right-panel {
@@ -802,6 +832,51 @@ window.__docxLoadFailed = true; // always use our own writer
   .toc-minimal .toc-entry .toc-ch { display: none; }
   .toc-minimal .toc-entry .toc-dots { border-bottom: none; }
   .toc-minimal .toc-entry .toc-pg { font-family: 'Playfair Display', serif; font-style: italic; font-size: 13px; }
+
+  /* TOC style: elegant */
+  .toc-elegant .toc-title { font-family:'Playfair Display',serif; font-size:26px; font-weight:700; text-align:center; letter-spacing:0.08em; margin-bottom:6px; }
+  .toc-elegant .toc-title::after { content:''; display:block; width:48px; height:2px; background:var(--accent); margin:14px auto 28px; }
+  .toc-elegant .toc-entry { font-size:13.5px; margin-bottom:9px; padding:6px 0; border-bottom:1px solid var(--border); }
+  .toc-elegant .toc-entry .toc-ch { font-family:'Playfair Display',serif; font-style:italic; font-size:12px; color:var(--accent); min-width:44px; }
+  .toc-elegant .toc-entry .toc-dots { border-bottom:1px dashed var(--border-dark); }
+  .toc-elegant .toc-entry .toc-pg { font-family:'Playfair Display',serif; font-size:13px; color:var(--accent); font-weight:700; }
+
+  /* TOC style: boxed */
+  .toc-boxed { background:linear-gradient(135deg,#fffdf8 60%,#f5efe4 100%); }
+  .toc-boxed .toc-title { font-size:15px; letter-spacing:0.25em; text-transform:uppercase; text-align:center; border:2px solid var(--accent); padding:10px 24px; display:inline-block; margin:0 auto 28px; display:flex; justify-content:center; align-items:center; }
+  .toc-boxed .toc-entry { background:#fff; border:1px solid var(--border); border-radius:5px; margin-bottom:6px; padding:7px 12px; font-size:13px; }
+  .toc-boxed .toc-entry .toc-ch { background:var(--accent); color:#fff; border-radius:3px; padding:2px 7px; font-size:10px; font-weight:700; }
+  .toc-boxed .toc-entry .toc-dots { display:none; }
+  .toc-boxed .toc-entry .toc-name { font-weight:600; }
+  .toc-boxed .toc-entry .toc-pg { font-weight:700; color:var(--accent); font-size:13px; }
+
+  /* TOC style: roman */
+  .toc-roman .toc-title { font-family:'Playfair Display',serif; font-size:20px; text-align:center; margin-bottom:28px; position:relative; }
+  .toc-roman .toc-title::before, .toc-roman .toc-title::after { content:'— '; color:var(--accent); }
+  .toc-roman .toc-entry { font-size:14px; margin-bottom:8px; display:flex; align-items:baseline; gap:8px; }
+  .toc-roman .toc-entry .toc-ch { font-family:'Playfair Display',serif; font-style:italic; font-size:13px; color:var(--ink-muted); min-width:60px; }
+  .toc-roman .toc-entry .toc-dots { flex:1; border-bottom:1px solid var(--border); }
+  .toc-roman .toc-entry .toc-pg { font-family:'Playfair Display',serif; font-size:13px; }
+
+  /* TOC style: split */
+  .toc-split { padding:40px 0; }
+  .toc-split .toc-title { font-size:11px; letter-spacing:0.35em; text-transform:uppercase; text-align:center; color:var(--ink-muted); margin-bottom:32px; padding:0 52px; }
+  .toc-split .toc-entry { display:grid; grid-template-columns:56px 1fr 32px; align-items:center; gap:0; margin-bottom:0; padding:11px 52px; border-bottom:1px solid var(--border); font-size:13.5px; }
+  .toc-split .toc-entry:nth-child(odd) { background:rgba(0,0,0,0.025); }
+  .toc-split .toc-entry .toc-ch { font-size:10px; font-weight:800; letter-spacing:0.12em; color:var(--accent); }
+  .toc-split .toc-entry .toc-name { font-weight:500; }
+  .toc-split .toc-entry .toc-dots { display:none; }
+  .toc-split .toc-entry .toc-pg { text-align:right; font-size:12px; color:var(--ink-muted); font-weight:700; }
+
+  /* TOC style: ornate */
+  .toc-ornate .toc-title { font-family:'Playfair Display',serif; font-size:22px; font-weight:700; text-align:center; margin-bottom:4px; }
+  .toc-ornate .toc-title::before { content:'✦  '; color:var(--gold); font-size:14px; }
+  .toc-ornate .toc-title::after { content:'  ✦'; color:var(--gold); font-size:14px; }
+  .toc-ornate .toc-ornate-rule { text-align:center; color:var(--gold); letter-spacing:0.4em; margin-bottom:24px; font-size:12px; }
+  .toc-ornate .toc-entry { font-size:13.5px; margin-bottom:6px; padding:5px 0; }
+  .toc-ornate .toc-entry .toc-ch { font-family:'Playfair Display',serif; font-style:italic; color:var(--gold); font-size:12px; min-width:48px; }
+  .toc-ornate .toc-entry .toc-dots { border-bottom:1px dotted var(--gold); opacity:0.5; }
+  .toc-ornate .toc-entry .toc-pg { color:var(--gold); font-weight:700; font-size:13px; }
 
   /* ── Editable special pages ── */
   .special-editable {
@@ -1774,6 +1849,14 @@ window.__docxLoadFailed = true; // always use our own writer
       <svg viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></svg>
       โหลด
     </button>
+    <button class="btn btn-ghost btn-save-load" onclick="importTxtClick()" title="นำเข้าไฟล์ .txt">
+      <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="12" y1="18" x2="12" y2="12"/><line x1="9" y1="15" x2="15" y2="15"/></svg>
+      นำเข้า .txt
+    </button>
+    <button class="btn btn-ghost btn-save-load" onclick="importDocxClick()" title="นำเข้าไฟล์ .docx (Word)">
+      <svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M9 13h6M9 17h4"/></svg>
+      นำเข้า .docx
+    </button>
     <button class="btn btn-ghost" id="undoBtn" onclick="historyUndo()" title="ย้อนกลับ (Ctrl+Z)" disabled>
       <svg viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-3.63"/></svg>
       Undo
@@ -2594,16 +2677,53 @@ window.__docxLoadFailed = true; // always use our own writer
         <span class="collapse-arrow">▼</span>
       </div>
       <div class="sidebar-body">
+
+      <!-- Title Page Editor -->
+      <div style="background:var(--panel-bg);border-radius:6px;padding:10px 12px;margin-bottom:12px;border:1px solid var(--border)">
+        <div style="font-size:11px;font-weight:700;color:var(--accent);letter-spacing:0.08em;margin-bottom:8px">📄 หน้าชื่อเรื่อง (Title Page)</div>
+        <label>เครื่องประดับหัว</label>
+        <select id="titlePageOrnament" oninput="updateTitlePage()" style="margin-bottom:8px">
+          <option value="✦ ✦ ✦">✦ ✦ ✦</option>
+          <option value="— ✦ —">— ✦ —</option>
+          <option value="❧">❧ (Fleuron)</option>
+          <option value="⁂">⁂ (Asterism)</option>
+          <option value="◆ ◇ ◆">◆ ◇ ◆</option>
+          <option value="★ ☆ ★">★ ☆ ★</option>
+          <option value="· · ·">· · · (จุด)</option>
+          <option value="">ไม่มี</option>
+        </select>
+        <label>ชื่อเรื่อง (ใช้จาก "ชื่อหนังสือ" ด้านบน หรือกำหนดเอง)</label>
+        <input type="text" id="titlePageCustomTitle" placeholder="ปล่อยว่าง = ใช้ชื่อหนังสือ" oninput="updateTitlePage()">
+        <label>ชื่อรอง (ใช้จาก "ชื่อรอง" หรือกำหนดเอง)</label>
+        <input type="text" id="titlePageCustomSubtitle" placeholder="ปล่อยว่าง = ใช้ชื่อรอง" oninput="updateTitlePage()">
+        <label>ผู้แต่ง (ใช้จาก "ชื่อผู้แต่ง" หรือกำหนดเอง)</label>
+        <input type="text" id="titlePageCustomAuthor" placeholder="ปล่อยว่าง = ใช้ชื่อผู้แต่ง" oninput="updateTitlePage()">
+        <label>นามปากกา (แสดงในวงเล็บ)</label>
+        <input type="text" id="titlePageCustomPen" placeholder="ปล่อยว่าง = ใช้นามปากกา" oninput="updateTitlePage()">
+        <label>สำนักพิมพ์ · ปี (บรรทัดล่าง)</label>
+        <input type="text" id="titlePageCustomPub" placeholder="ปล่อยว่าง = ใช้ข้อมูลจากปก" oninput="updateTitlePage()">
+        <label>Layout หน้าชื่อเรื่อง</label>
+        <div style="display:flex;gap:4px;flex-wrap:wrap;margin-bottom:8px">
+          <button class="rb-text active" id="tplayout-center" onclick="setTitlePageLayout('center',this)" style="font-size:10px;flex:1">⊙ กลาง</button>
+          <button class="rb-text" id="tplayout-left"   onclick="setTitlePageLayout('left',this)"   style="font-size:10px;flex:1">◧ ซ้าย</button>
+          <button class="rb-text" id="tplayout-bottom" onclick="setTitlePageLayout('bottom',this)" style="font-size:10px;flex:1">⊕ ล่าง</button>
+        </div>
+      </div>
       <div class="toggle-row">
         <span class="toggle-label">สารบัญ (TOC)</span>
         <label class="toggle"><input type="checkbox" id="showTOC" onchange="updatePreview();document.getElementById('tocStyleRow').style.display=this.checked?'block':'none'"><span class="toggle-slider"></span></label>
       </div>
       <div id="tocStyleRow" style="display:none;margin-bottom:10px">
         <label style="font-size:11px;margin-bottom:4px">สไตล์สารบัญ</label>
-        <div style="display:flex;gap:5px">
-          <button class="rb-text active" id="toc-style-classic" onclick="setTocStyle('classic',this)" style="font-size:10px;flex:1">📜 Classic</button>
-          <button class="rb-text" id="toc-style-modern" onclick="setTocStyle('modern',this)" style="font-size:10px;flex:1">◼ Modern</button>
-          <button class="rb-text" id="toc-style-minimal" onclick="setTocStyle('minimal',this)" style="font-size:10px;flex:1">— Minimal</button>
+        <div style="display:flex;gap:4px;flex-wrap:wrap">
+          <button class="rb-text active" id="toc-style-classic"  onclick="setTocStyle('classic',this)"  style="font-size:10px;flex:1;min-width:60px">📜 Classic</button>
+          <button class="rb-text" id="toc-style-elegant"  onclick="setTocStyle('elegant',this)"  style="font-size:10px;flex:1;min-width:60px">✨ Elegant</button>
+          <button class="rb-text" id="toc-style-modern"   onclick="setTocStyle('modern',this)"   style="font-size:10px;flex:1;min-width:60px">◼ Modern</button>
+          <button class="rb-text" id="toc-style-boxed"    onclick="setTocStyle('boxed',this)"    style="font-size:10px;flex:1;min-width:60px">▦ Boxed</button>
+          <button class="rb-text" id="toc-style-roman"    onclick="setTocStyle('roman',this)"    style="font-size:10px;flex:1;min-width:60px">— Roman</button>
+          <button class="rb-text" id="toc-style-split"    onclick="setTocStyle('split',this)"    style="font-size:10px;flex:1;min-width:60px">▤ Split</button>
+          <button class="rb-text" id="toc-style-ornate"   onclick="setTocStyle('ornate',this)"   style="font-size:10px;flex:1;min-width:60px">✦ Ornate</button>
+          <button class="rb-text" id="toc-style-minimal"  onclick="setTocStyle('minimal',this)"  style="font-size:10px;flex:1;min-width:60px">— Minimal</button>
         </div>
       </div>
       <div class="toggle-row">
@@ -3655,6 +3775,10 @@ window.__docxLoadFailed = true; // always use our own writer
 
 <!-- Hidden file input for load project -->
 <input type="file" id="loadProjectInput" accept=".json" style="display:none" onchange="loadProjectFile(this)">
+<!-- Hidden file input for txt import -->
+<input type="file" id="importTxtInput" accept=".txt" style="display:none" onchange="importTxtFile(this)">
+<!-- Hidden file input for docx import -->
+<input type="file" id="importDocxInput" accept=".docx" style="display:none" onchange="importDocxFile(this)">
 
 <!-- Focus Mode Exit Button -->
 <button class="focus-exit-btn" onclick="toggleFocusMode()">
@@ -4022,7 +4146,303 @@ function loadProjectFile(input) {
   input.value = '';
 }
 
-// ── Search & Replace ──
+// ── Import .txt ──
+function importTxtClick() {
+  document.getElementById('importTxtInput').click();
+}
+
+function importTxtFile(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const text = e.target.result;
+    // ตรวจว่ามีตัวแบ่งบทหรือไม่
+    // รองรับ: "=== บทที่ 1 ===" / "=== ชื่อบท ===" / "บทที่ 1" / "บท 1" / "chapter" (case-insensitive)
+    const chapterSplitRe = /^(?:={2,}.*={2,}|บทที่\s*\d+.*|บท\s*\d+.*|chapter\s*\d+.*)$/im;
+    const hasChapters = chapterSplitRe.test(text);
+
+    if (hasChapters) {
+      _importTxtMultiChapter(text, file.name);
+    } else {
+      _importTxtSingleChapter(text, file.name);
+    }
+    input.value = '';
+  };
+  reader.readAsText(file, 'UTF-8');
+}
+
+async function _importTxtSingleChapter(text, filename) {
+  const title = filename.replace(/\.txt$/i, '').replace(/\.docx$/i, '');
+  // ประมวลผลแบบ async หลายรอบเพื่อไม่บล็อก UI
+  await new Promise(r => setTimeout(r, 0));
+  const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+  await new Promise(r => setTimeout(r, 0));
+  const content = lines.join('\n');
+
+  const addMode = confirm(`นำเข้าเป็น 1 บท: "${title}"\n${lines.length} ย่อหน้า\n\nเพิ่มเข้าโปรเจกต์ปัจจุบัน หรือสร้างโปรเจกต์ใหม่?\n(OK = เพิ่ม, Cancel = ใหม่)`);
+  if (!addMode) chapters = [];
+
+  const id = 'ch_' + Date.now();
+  chapters.push({ id, title, content, fontSize: null, lineHeight: null, align: null, font: null });
+  currentChapterId = id;
+  renderChapterList();
+  selectChapter(id);
+  updatePreview();
+  updateStats();
+  showToast(`✅ นำเข้า "${title}" — ${lines.length} ย่อหน้าเรียบร้อย`);
+}
+
+async function _importTxtMultiChapter(text, filename) {
+  await new Promise(r => setTimeout(r, 0));
+  const lines = text.split('\n');
+  const chapterHeadRe = /^(?:={2,}\s*(.+?)\s*={2,}|(บทที่\s*\d+[^\n]*)|( บท\s*\d+[^\n]*)|(chapter\s*\d+[^\n]*))$/i;
+
+  const rawChapters = [];
+  let cur = null;
+
+  // ประมวลผลทีละ 200 บรรทัดเพื่อไม่บล็อก UI
+  for (let i = 0; i < lines.length; i++) {
+    if (i % 200 === 0) await new Promise(r => setTimeout(r, 0));
+    const line = lines[i];
+    const m = line.match(chapterHeadRe);
+    if (m) {
+      if (cur) rawChapters.push(cur);
+      const title = (m[1] || m[2] || m[3] || m[4] || line).trim();
+      cur = { title, lines: [] };
+    } else {
+      if (!cur) cur = { title: filename.replace(/\.txt$/i, '').replace(/\.docx$/i, ''), lines: [] };
+      cur.lines.push(line.trim());
+    }
+  }
+  if (cur) rawChapters.push(cur);
+
+  await new Promise(r => setTimeout(r, 0));
+  const validChapters = rawChapters.map(c => ({
+    ...c,
+    content: c.lines.filter(l => l.length > 0).join('\n')
+  })).filter(c => c.content.length > 0 || c.title);
+
+  if (validChapters.length === 0) { showToast('❌ ไม่พบเนื้อหาในไฟล์'); return; }
+
+  const addMode = confirm(`พบ ${validChapters.length} บท\n\nเพิ่มเข้าโปรเจกต์ปัจจุบัน หรือสร้างโปรเจกต์ใหม่?\n(OK = เพิ่ม, Cancel = ใหม่)`);
+  if (!addMode) chapters = [];
+
+  // เพิ่มบทแบบ batch เพื่อไม่บล็อก UI
+  for (let i = 0; i < validChapters.length; i++) {
+    if (i % 10 === 0) await new Promise(r => setTimeout(r, 0));
+    const c = validChapters[i];
+    const id = 'ch_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
+    chapters.push({ id, title: c.title, content: c.content, fontSize: null, lineHeight: null, align: null, font: null });
+  }
+
+  currentChapterId = chapters[chapters.length - validChapters.length].id;
+  renderChapterList();
+  selectChapter(currentChapterId);
+  updatePreview();
+  updateStats();
+  showToast(`✅ นำเข้า ${validChapters.length} บทเรียบร้อย!`);
+}
+
+// ── Import .docx ──
+function importDocxClick() {
+  if (typeof mammoth === 'undefined') {
+    showToast('⚠ กำลังโหลด mammoth.js... ลองใหม่อีกครั้ง');
+    return;
+  }
+  document.getElementById('importDocxInput').click();
+}
+
+// แปลง HTML inline ของ mammoth → markup string ของ editor
+function _mammothNodeToMarkup(node) {
+  if (node.nodeType === Node.TEXT_NODE) return node.textContent;
+  const tag = node.nodeName;
+  const inner = Array.from(node.childNodes).map(_mammothNodeToMarkup).join('');
+  if (tag === 'STRONG' || tag === 'B') return `**${inner}**`;
+  if (tag === 'EM' || tag === 'I') return `_${inner}_`;
+  if (tag === 'U') return `__${inner}__`;
+  if (tag === 'BR') return '\n';
+  return inner;
+}
+
+// แปลง block element ของ mammoth → markup line(s)
+function _mammothBlockToLines(node) {
+  const tag = node.nodeName;
+  const text = (node.textContent || '').trim();
+  if (!text && tag !== 'BR') return [];
+
+  if (tag === 'H1') return [null]; // sentinel สำหรับแยกบท — จัดการข้างนอก
+  if (tag === 'H2' || tag === 'H3') {
+    // section separator
+    const markup = _mammothNodeToMarkup(node).trim();
+    return ['— ✦ —', `**${markup}**`];
+  }
+  if (tag === 'TABLE') {
+    // แปลงตาราง → แถวธรรมดา
+    const rows = Array.from(node.querySelectorAll('tr'));
+    return rows.map(r => Array.from(r.querySelectorAll('td,th')).map(c => c.textContent.trim()).join(' | '));
+  }
+  if (tag === 'UL' || tag === 'OL') {
+    return Array.from(node.querySelectorAll('li')).map(li => '• ' + _mammothNodeToMarkup(li).trim()).filter(Boolean);
+  }
+  if (tag === 'P' || tag === 'DIV') {
+    const markup = _mammothNodeToMarkup(node).trim();
+    return markup ? [markup] : [];
+  }
+  // fallback
+  const markup = _mammothNodeToMarkup(node).trim();
+  return markup ? [markup] : [];
+}
+
+function importDocxFile(input) {
+  const file = input.files[0];
+  if (!file) return;
+  if (typeof mammoth === 'undefined') { showToast('❌ ไม่พบ mammoth.js — ต้องใช้ Internet'); return; }
+
+  showToast('⏳ กำลังอ่านไฟล์ .docx...');
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const arrayBuffer = e.target.result;
+    setTimeout(async () => {
+      try {
+        const result = await mammoth.convertToHtml({ arrayBuffer });
+        const html = result.value || '';
+        if (!html.trim()) { showToast('❌ ไม่พบข้อความในไฟล์'); input.value = ''; return; }
+
+        await new Promise(r => setTimeout(r, 0));
+        const baseName = file.name.replace(/\.docx$/i, '');
+
+        const parser = new DOMParser();
+        const dom = parser.parseFromString(html, 'text/html');
+        const nodes = Array.from(dom.body.children); // ใช้ .children (elements only)
+        const hasH1 = nodes.some(n => n.nodeName === 'H1');
+
+        if (hasH1) {
+          await _importDocxByHeading(nodes, baseName);
+        } else {
+          // ไม่มี H1 → ตรวจ text-based chapter split
+          const text = dom.body.textContent || '';
+          const chapterHeadRe = /^(?:={2,}.*={2,}|บทที่\s*\d+.*|บท\s*\d+.*|chapter\s*\d+.*)$/im;
+          if (chapterHeadRe.test(text)) {
+            // fallback: txt-style multi-chapter (preserve markup best-effort)
+            await _importDocxNoHeading(nodes, baseName, true);
+          } else {
+            await _importDocxNoHeading(nodes, baseName, false);
+          }
+        }
+      } catch(err) {
+        showToast('❌ อ่านไฟล์ .docx ไม่ได้: ' + err.message);
+        console.error(err);
+      }
+      input.value = '';
+    }, 50);
+  };
+  reader.onerror = () => { showToast('❌ อ่านไฟล์ไม่ได้'); input.value = ''; };
+  reader.readAsArrayBuffer(file);
+}
+
+async function _importDocxByHeading(nodes, baseName) {
+  const rawChapters = [];
+  let cur = null;
+
+  for (let i = 0; i < nodes.length; i++) {
+    if (i % 100 === 0) await new Promise(r => setTimeout(r, 0));
+    const node = nodes[i];
+    const tag = node.nodeName;
+    const text = (node.textContent || '').trim();
+
+    if (tag === 'H1') {
+      if (cur) rawChapters.push(cur);
+      cur = { title: text, lines: [] };
+    } else {
+      if (!cur) cur = { title: baseName, lines: [] };
+      const lines = _mammothBlockToLines(node);
+      lines.forEach(l => { if (l !== null && l !== undefined) cur.lines.push(l); });
+    }
+  }
+  if (cur) rawChapters.push(cur);
+
+  // กรองบทที่มีเนื้อหา
+  const validChapters = rawChapters
+    .map(c => ({ title: c.title, content: c.lines.filter(l => l.length > 0).join('\n') }))
+    .filter(c => c.content.trim().length > 0 || c.title !== baseName);
+
+  if (validChapters.length === 0) { showToast('❌ ไม่พบเนื้อหาในไฟล์'); return; }
+
+  const addMode = confirm(`พบ ${validChapters.length} บท (แบ่งตาม Heading 1)\n\nเพิ่มเข้าโปรเจกต์ปัจจุบัน หรือสร้างโปรเจกต์ใหม่?\n(OK = เพิ่ม, Cancel = ใหม่)`);
+  if (!addMode) chapters = [];
+
+  for (let i = 0; i < validChapters.length; i++) {
+    if (i % 10 === 0) await new Promise(r => setTimeout(r, 0));
+    const c = validChapters[i];
+    const id = 'ch_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
+    chapters.push({ id, title: c.title, content: c.content, fontSize: null, lineHeight: null, align: null, font: null });
+  }
+
+  currentChapterId = chapters[chapters.length - validChapters.length].id;
+  renderChapterList();
+  selectChapter(currentChapterId);
+  updatePreview();
+  updateStats();
+  showToast(`✅ นำเข้า ${validChapters.length} บทเรียบร้อย (รักษา bold/italic)`);
+}
+
+// นำเข้าไฟล์ที่ไม่มี H1 → ทั้งหมดเป็น 1 บท หรือแบ่งตาม text pattern
+async function _importDocxNoHeading(nodes, baseName, tryMultiChapter) {
+  // รวม markup ทั้งหมดก่อน
+  const allLines = [];
+  for (let i = 0; i < nodes.length; i++) {
+    if (i % 100 === 0) await new Promise(r => setTimeout(r, 0));
+    const lines = _mammothBlockToLines(nodes[i]);
+    lines.forEach(l => { if (l) allLines.push(l); });
+  }
+
+  if (tryMultiChapter) {
+    // ลองแบ่งตาม text pattern เหมือน txt import
+    const chapterHeadRe = /^(?:={2,}\s*(.+?)\s*={2,}|(บทที่\s*\d+[^\n]*)|(บท\s*\d+[^\n]*)|(chapter\s*\d+[^\n]*))$/i;
+    const rawChapters = [];
+    let cur = null;
+    for (const line of allLines) {
+      const m = line.match(chapterHeadRe);
+      if (m) {
+        if (cur) rawChapters.push(cur);
+        const title = (m[1] || m[2] || m[3] || m[4] || line).trim();
+        cur = { title, lines: [] };
+      } else {
+        if (!cur) cur = { title: baseName, lines: [] };
+        cur.lines.push(line);
+      }
+    }
+    if (cur) rawChapters.push(cur);
+    const validChapters = rawChapters
+      .map(c => ({ title: c.title, content: c.lines.filter(l => l.length > 0).join('\n') }))
+      .filter(c => c.content.trim().length > 0);
+
+    if (validChapters.length > 1) {
+      const addMode = confirm(`พบ ${validChapters.length} บท\n\nเพิ่มเข้าโปรเจกต์ปัจจุบัน หรือสร้างโปรเจกต์ใหม่?\n(OK = เพิ่ม, Cancel = ใหม่)`);
+      if (!addMode) chapters = [];
+      for (const c of validChapters) {
+        const id = 'ch_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
+        chapters.push({ id, title: c.title, content: c.content, fontSize: null, lineHeight: null, align: null, font: null });
+      }
+      currentChapterId = chapters[chapters.length - validChapters.length].id;
+      renderChapterList(); selectChapter(currentChapterId); updatePreview(); updateStats();
+      showToast(`✅ นำเข้า ${validChapters.length} บทเรียบร้อย`);
+      return;
+    }
+  }
+
+  // Single chapter
+  const content = allLines.filter(l => l.length > 0).join('\n');
+  const addMode = confirm(`นำเข้าเป็น 1 บท: "${baseName}"\n\nเพิ่มเข้าโปรเจกต์ปัจจุบัน หรือสร้างโปรเจกต์ใหม่?\n(OK = เพิ่ม, Cancel = ใหม่)`);
+  if (!addMode) chapters = [];
+  const id = 'ch_' + Date.now();
+  chapters.push({ id, title: baseName, content, fontSize: null, lineHeight: null, align: null, font: null });
+  currentChapterId = id;
+  renderChapterList(); selectChapter(id); updatePreview(); updateStats();
+  showToast(`✅ นำเข้า "${baseName}" เรียบร้อย (รักษา bold/italic)`);
+}
+
 function openSearch() {
   document.getElementById('searchModal').classList.add('open');
   setTimeout(() => document.getElementById('searchInput').focus(), 100);
@@ -4063,12 +4483,180 @@ function renderChapterList() {
   chapters.forEach((ch, i) => {
     const el = document.createElement('div');
     el.className = 'chapter-item' + (ch.id === currentChapterId ? ' active' : '');
+    el.draggable = true;
+    el.dataset.chId = ch.id;
     el.innerHTML = `
+      <span class="ch-drag" title="ลากเพื่อสลับตำแหน่ง">⠿</span>
+      <div class="ch-move-btns">
+        <button class="ch-move-btn ch-move-up" title="เลื่อนขึ้น">▲</button>
+        <button class="ch-move-btn ch-move-dn" title="เลื่อนลง">▼</button>
+      </div>
       <div class="ch-num">${i + 1}</div>
-      <div class="ch-title">${ch.title || 'บทที่ ' + (i+1)}</div>
-      <span class="ch-del" onclick="deleteChapter(${ch.id}, event)">×</span>
+      <div class="ch-title" title="แตะสองครั้งหรือกดปุ่ม ✏ เพื่อแก้ชื่อ">${ch.title || 'บทที่ ' + (i+1)}</div>
+      <button class="ch-edit-btn" title="แก้ไขชื่อบท">✏</button>
+      <span class="ch-del" title="ลบบท">×</span>
     `;
-    el.addEventListener('click', (e) => { if (!e.target.classList.contains('ch-del')) selectChapter(ch.id); });
+
+    // ── ฟังก์ชัน inline edit ──
+    const startEdit = () => {
+      const titleEl = el.querySelector('.ch-title');
+      if (!titleEl) return;
+      const input = document.createElement('input');
+      input.className = 'ch-title-input';
+      input.value = ch.title || '';
+      input.placeholder = 'ชื่อบท...';
+      titleEl.replaceWith(input);
+      input.focus();
+      input.select();
+      const save = () => {
+        const newTitle = input.value.trim() || ('บทที่ ' + (i + 1));
+        ch.title = newTitle;
+        renderChapterList();
+        updatePreview();
+        updateStats();
+        recordHistoryDebounced();
+        if (ch.id === currentChapterId) {
+          const ti = document.getElementById('chapterTitleInput');
+          if (ti) ti.value = newTitle;
+        }
+      };
+      input.addEventListener('blur', save);
+      input.addEventListener('keydown', (ev) => {
+        if (ev.key === 'Enter') { ev.preventDefault(); input.blur(); }
+        if (ev.key === 'Escape') { input.value = ch.title || ''; input.blur(); }
+      });
+    };
+
+    // คลิกเลือกบท
+    el.addEventListener('click', (e) => {
+      if (e.target.classList.contains('ch-del')) return;
+      if (e.target.classList.contains('ch-drag')) return;
+      if (e.target.classList.contains('ch-title-input')) return;
+      if (e.target.classList.contains('ch-edit-btn')) return;
+      if (e.target.classList.contains('ch-move-btn') || e.target.classList.contains('ch-move-up') || e.target.classList.contains('ch-move-dn')) return;
+      selectChapter(ch.id);
+    });
+
+    // ดับเบิลคลิก ch-title → inline edit (desktop)
+    el.querySelector('.ch-title').addEventListener('dblclick', (e) => {
+      e.stopPropagation();
+      startEdit();
+    });
+
+    // ปุ่ม ✏ → inline edit (mobile-friendly)
+    el.querySelector('.ch-edit-btn').addEventListener('click', (e) => {
+      e.stopPropagation();
+      startEdit();
+    });
+
+    // ปุ่มเลื่อนขึ้น
+    el.querySelector('.ch-move-up').addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (i === 0) return;
+      const [moved] = chapters.splice(i, 1);
+      chapters.splice(i - 1, 0, moved);
+      renderChapterList();
+      updatePreview();
+      updateStats();
+      recordHistoryDebounced();
+      showToast('↑ เลื่อนบทขึ้นแล้ว');
+    });
+
+    // ปุ่มเลื่อนลง
+    el.querySelector('.ch-move-dn').addEventListener('click', (e) => {
+      e.stopPropagation();
+      if (i === chapters.length - 1) return;
+      const [moved] = chapters.splice(i, 1);
+      chapters.splice(i + 1, 0, moved);
+      renderChapterList();
+      updatePreview();
+      updateStats();
+      recordHistoryDebounced();
+      showToast('↓ เลื่อนบทลงแล้ว');
+    });
+
+    // ลบบท
+    el.querySelector('.ch-del').addEventListener('click', (e) => {
+      e.stopPropagation();
+      deleteChapter(ch.id, e);
+    });
+
+    // ── Drag & Drop (desktop) ──
+    el.addEventListener('dragstart', (e) => {
+      e.dataTransfer.effectAllowed = 'move';
+      e.dataTransfer.setData('text/plain', ch.id);
+      el.classList.add('dragging');
+    });
+    el.addEventListener('dragend', () => {
+      el.classList.remove('dragging');
+      list.querySelectorAll('.chapter-item').forEach(x => x.classList.remove('drag-over'));
+    });
+    el.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      e.dataTransfer.dropEffect = 'move';
+      list.querySelectorAll('.chapter-item').forEach(x => x.classList.remove('drag-over'));
+      el.classList.add('drag-over');
+    });
+    el.addEventListener('dragleave', () => el.classList.remove('drag-over'));
+    el.addEventListener('drop', (e) => {
+      e.preventDefault();
+      el.classList.remove('drag-over');
+      const fromId = e.dataTransfer.getData('text/plain');
+      const toId = ch.id;
+      if (fromId === toId) return;
+      const fromIdx = chapters.findIndex(c => c.id === fromId);
+      const toIdx   = chapters.findIndex(c => c.id === toId);
+      if (fromIdx < 0 || toIdx < 0) return;
+      const [moved] = chapters.splice(fromIdx, 1);
+      chapters.splice(toIdx, 0, moved);
+      renderChapterList();
+      updatePreview();
+      updateStats();
+      recordHistoryDebounced();
+      showToast('↕ สลับตำแหน่งบทแล้ว');
+    });
+
+    // ── Touch Drag & Drop (mobile) ──
+    let touchDragId = null;
+    let touchPlaceholder = null;
+    el.querySelector('.ch-drag').addEventListener('touchstart', (e) => {
+      e.stopPropagation();
+      touchDragId = ch.id;
+      el.classList.add('dragging');
+      touchPlaceholder = document.createElement('div');
+      touchPlaceholder.style.cssText = 'height:' + el.offsetHeight + 'px;border:1.5px dashed var(--accent);border-radius:4px;margin-bottom:2px;background:rgba(139,69,19,0.04)';
+    }, { passive: true });
+    el.querySelector('.ch-drag').addEventListener('touchmove', (e) => {
+      if (!touchDragId) return;
+      const touch = e.touches[0];
+      const target = document.elementFromPoint(touch.clientX, touch.clientY);
+      const targetItem = target && target.closest('.chapter-item');
+      list.querySelectorAll('.chapter-item').forEach(x => x.classList.remove('drag-over'));
+      if (targetItem && targetItem !== el) targetItem.classList.add('drag-over');
+    }, { passive: true });
+    el.querySelector('.ch-drag').addEventListener('touchend', (e) => {
+      if (!touchDragId) return;
+      el.classList.remove('dragging');
+      list.querySelectorAll('.chapter-item').forEach(x => x.classList.remove('drag-over'));
+      const touch = e.changedTouches[0];
+      const target = document.elementFromPoint(touch.clientX, touch.clientY);
+      const targetItem = target && target.closest('.chapter-item');
+      if (targetItem && targetItem.dataset.chId && targetItem.dataset.chId !== touchDragId) {
+        const fromIdx = chapters.findIndex(c => c.id === touchDragId);
+        const toIdx   = chapters.findIndex(c => c.id === targetItem.dataset.chId);
+        if (fromIdx >= 0 && toIdx >= 0) {
+          const [moved] = chapters.splice(fromIdx, 1);
+          chapters.splice(toIdx, 0, moved);
+          renderChapterList();
+          updatePreview();
+          updateStats();
+          recordHistoryDebounced();
+          showToast('↕ สลับตำแหน่งบทแล้ว');
+        }
+      }
+      touchDragId = null;
+    }, { passive: true });
+
     list.appendChild(el);
   });
 }
@@ -4159,18 +4747,25 @@ function weNodeToMarkup(node) {
   if (tag === 'u') return `__${text}__`;
   if (tag === 'mark') return `==${text}==`;
   if (tag === 'span') {
-    const colorM = style.match(/color:\s*([#\w]+)/);
+    const colorM = style.match(/color:\s*([#\w(),-]+)/);
     const sizeM = style.match(/font-size:\s*(\d+)px/);
     const fontM = style.match(/font-family:\s*'?([^',;]+)/);
-    if (colorM && !sizeM) return `<color:${colorM[1]}>${text}</color>`;
     if (sizeM) return `<size:${sizeM[1]}>${text}</size>`;
+    if (colorM && !sizeM) return `<color:${colorM[1]}>${text}</color>`;
     if (fontM) return `<font:${fontM[1].trim()}>${text}</font>`;
     // gold italic («»)
     if (style.includes('var(--gold)')) return `«${text}»`;
     return text;
   }
+  // blockquote from execCommand('indent') — preserve as Thai indent prefix
+  if (tag === 'blockquote') return '\u3000' + text;
   if (tag === 'code') return `\`${text}\``;
   if (tag === 'br') return '\n';
+  // div/p with margin-left (from indent button)
+  if ((tag === 'div' || tag === 'p') && style.match(/margin-left:\s*\d/)) {
+    const indentLevels = Math.round(parseFloat(style.match(/margin-left:\s*([\d.]+)px/)?.[1] || 0) / 40);
+    return '\u3000'.repeat(Math.max(1, indentLevels)) + text;
+  }
   return text;
 }
 
@@ -4181,6 +4776,7 @@ function weFromMarkup(markup) {
     if (line.trim() === '[PAGE_BREAK]') {
       return `<div class="we-pagebreak" contenteditable="false">— ↵ ตัดหน้า —</div>`;
     }
+    // Preserve lines that have only whitespace/indent (e.g. Thai \u3000) as non-empty paragraphs
     if (!line.trim()) return `<p><br></p>`;
     return `<p>${parseRichText(line)}</p>`;
   }).join('');
@@ -4212,14 +4808,24 @@ function weOnInput() {
 
 // Apply rich-text format to current selection
 function weFormat(type) {
-  const ed = weGetEditor();
-  if (!ed) return;
-  ed.focus();
+  // Work on whichever contenteditable has active selection: chapterEditor OR page-body
   const sel = window.getSelection();
   if (!sel || sel.rangeCount === 0 || sel.isCollapsed) {
     showToast('กรุณาคลุมข้อความก่อน'); return;
   }
   const range = sel.getRangeAt(0);
+  const anchorNode = sel.anchorNode;
+
+  // Determine context: chapterEditor or page-body
+  const ed = weGetEditor();
+  const inEditor   = ed && ed.contains(anchorNode);
+  const pageBodyEl = anchorNode?.parentElement?.closest('.page-body');
+  const inPageBody = !!pageBodyEl;
+
+  if (!inEditor && !inPageBody) {
+    showToast('กรุณาคลุมข้อความก่อน'); return;
+  }
+
   const selectedText = range.toString();
   if (!selectedText) { showToast('กรุณาคลุมข้อความก่อน'); return; }
 
@@ -4264,7 +4870,9 @@ function weFormat(type) {
       range.deleteContents();
       range.insertNode(node);
       sel.removeAllRanges();
-      weOnInput(); hideInlineFmtBar(); return;
+      if (inPageBody) syncPageBodyToChapter(pageBodyEl, pageBodyEl.dataset.chId);
+      else weOnInput();
+      hideInlineFmtBar(); return;
     }
     case 'cmd': {
       node = document.createElement('code');
@@ -4272,20 +4880,32 @@ function weFormat(type) {
       break;
     }
     case 'clear': {
-      // Unwrap: replace selection with plain text
       const text = selectedText;
       range.deleteContents();
       range.insertNode(document.createTextNode(text));
       sel.removeAllRanges();
-      weOnInput(); hideInlineFmtBar(); return;
+      if (inPageBody) syncPageBodyToChapter(pageBodyEl, pageBodyEl.dataset.chId);
+      else weOnInput();
+      hideInlineFmtBar(); return;
     }
     default: return;
   }
   if (node) {
-    range.surroundContents(node);
+    try {
+      range.surroundContents(node);
+    } catch(e) {
+      // partial selection across tags — extract and re-wrap
+      const frag = range.extractContents();
+      node.appendChild(frag);
+      range.insertNode(node);
+    }
     sel.removeAllRanges();
   }
-  weOnInput();
+  if (inPageBody) {
+    syncPageBodyToChapter(pageBodyEl, pageBodyEl.dataset.chId);
+  } else {
+    weOnInput();
+  }
   hideInlineFmtBar();
 }
 
@@ -4335,43 +4955,48 @@ function applyInlineFmt(type) {
 
 // Apply a specific color to selection (called from format-bar color picker)
 function weFormatColor(color) {
-  const ed = weGetEditor();
-  if (!ed) return;
   const sel = window.getSelection();
-  if (!sel || sel.isCollapsed || !ed.contains(sel.anchorNode)) return;
-  ed.focus();
+  if (!sel || sel.isCollapsed) return;
+  const anchorNode = sel.anchorNode;
+  const ed = weGetEditor();
+  const inEditor   = ed && ed.contains(anchorNode);
+  const pageBodyEl = anchorNode?.parentElement?.closest('.page-body');
+  if (!inEditor && !pageBodyEl) return;
   const range = sel.getRangeAt(0);
   const node = document.createElement('span');
   node.style.color = color;
   try { range.surroundContents(node); } catch(e) {
-    // surroundContents fails on partial selection — use execCommand fallback
-    document.execCommand('foreColor', false, color);
+    const frag = range.extractContents();
+    node.appendChild(frag);
+    range.insertNode(node);
   }
   sel.removeAllRanges();
-  weOnInput();
+  if (pageBodyEl) syncPageBodyToChapter(pageBodyEl, pageBodyEl.dataset.chId);
+  else weOnInput();
 }
 
 // Apply a specific font-size to selection (called from format-bar size input)
 function weFormatSize(size) {
   const sz = parseInt(size);
   if (!sz || sz < 6) return;
-  const ed = weGetEditor();
-  if (!ed) return;
   const sel = window.getSelection();
-  if (!sel || sel.isCollapsed || !ed.contains(sel.anchorNode)) return;
-  ed.focus();
+  if (!sel || sel.isCollapsed) return;
+  const anchorNode = sel.anchorNode;
+  const ed = weGetEditor();
+  const inEditor   = ed && ed.contains(anchorNode);
+  const pageBodyEl = anchorNode?.parentElement?.closest('.page-body');
+  if (!inEditor && !pageBodyEl) return;
   const range = sel.getRangeAt(0);
   const node = document.createElement('span');
   node.style.fontSize = sz + 'px';
   try { range.surroundContents(node); } catch(e) {
-    document.execCommand('fontSize', false, '7');
-    ed.querySelectorAll('font[size="7"]').forEach(f => {
-      f.removeAttribute('size');
-      f.style.fontSize = sz + 'px';
-    });
+    const frag = range.extractContents();
+    node.appendChild(frag);
+    range.insertNode(node);
   }
   sel.removeAllRanges();
-  weOnInput();
+  if (pageBodyEl) syncPageBodyToChapter(pageBodyEl, pageBodyEl.dataset.chId);
+  else weOnInput();
 }
 
 // ═══════════════════════════════════════════════
@@ -4633,11 +5258,7 @@ function updatePreview() {
   document.getElementById('coverAuthorDisplay').textContent = pen || author;
   document.getElementById('coverPublisherDisplay').textContent = pub;
 
-  document.getElementById('titlePageTitle').textContent = title;
-  document.getElementById('titlePageSubtitle').textContent = subtitle;
-  document.getElementById('titlePageAuthor').textContent = author;
-  document.getElementById('titlePageYear').textContent = pen ? `(นามปากกา: ${pen})` : '';
-  document.getElementById('titlePagePublisher').textContent = `${pub} · ${year}`;
+  updateTitlePage();
 
   // Special pages toggles
   const showPreface = document.getElementById('showPreface').checked;
@@ -4657,11 +5278,51 @@ function updatePreview() {
   renderChapterPages();
 }
 
-let tocStyle = 'classic'; // 'classic' | 'modern' | 'minimal'
+let tocStyle = 'classic';
+let titlePageLayout = 'center'; // 'center' | 'left' | 'bottom'
+
+function setTitlePageLayout(layout, el) {
+  titlePageLayout = layout;
+  document.querySelectorAll('#tplayout-center,#tplayout-left,#tplayout-bottom').forEach(b => b.classList.remove('active'));
+  if (el) el.classList.add('active');
+  updateTitlePage();
+}
+
+function updateTitlePage() {
+  const title    = (document.getElementById('titlePageCustomTitle')?.value.trim()    ) || document.getElementById('bookTitle').value;
+  const subtitle = (document.getElementById('titlePageCustomSubtitle')?.value.trim() ) || document.getElementById('bookSubtitle').value;
+  const author   = (document.getElementById('titlePageCustomAuthor')?.value.trim()   ) || document.getElementById('authorName').value;
+  const pen      = (document.getElementById('titlePageCustomPen')?.value.trim()      ) || document.getElementById('penName').value;
+  const pub      = document.getElementById('publisher').value;
+  const year     = document.getElementById('pubYear').value;
+  const pubLine  = (document.getElementById('titlePageCustomPub')?.value.trim()      ) || `${pub} · ${year}`;
+  const ornament = document.getElementById('titlePageOrnament')?.value ?? '✦ ✦ ✦';
+
+  const tp = document.getElementById('pageTitlePage');
+  if (!tp) return;
+
+  // Apply layout class
+  tp.classList.remove('tp-left','tp-bottom');
+  if (titlePageLayout === 'left') tp.classList.add('tp-left');
+  else if (titlePageLayout === 'bottom') tp.classList.add('tp-bottom');
+
+  const ornEl = tp.querySelector('.title-page-ornament');
+  if (ornEl) { ornEl.textContent = ornament; ornEl.style.display = ornament ? '' : 'none'; }
+  const titleEl = tp.querySelector('.title-page-title');
+  if (titleEl) titleEl.textContent = title;
+  const subEl = tp.querySelector('.title-page-subtitle');
+  if (subEl) { subEl.textContent = subtitle; subEl.style.display = subtitle ? '' : 'none'; }
+  const authEl = tp.querySelector('#titlePageAuthor');
+  if (authEl) authEl.textContent = author;
+  const yearEl = tp.querySelector('#titlePageYear');
+  if (yearEl) { yearEl.textContent = pen ? `(นามปากกา: ${pen})` : ''; yearEl.style.display = pen ? '' : 'none'; }
+  const pubEl = tp.querySelector('#titlePagePublisher');
+  if (pubEl) pubEl.textContent = pubLine;
+}
 
 function setTocStyle(style, el) {
   tocStyle = style;
-  document.querySelectorAll('#toc-style-classic,#toc-style-modern,#toc-style-minimal').forEach(b => b.classList.remove('active'));
+  document.querySelectorAll('#toc-style-classic,#toc-style-modern,#toc-style-minimal,#toc-style-elegant,#toc-style-boxed,#toc-style-roman,#toc-style-split,#toc-style-ornate').forEach(b => b.classList.remove('active'));
   if (el) el.classList.add('active');
   renderSpecialPages();
   setTimeout(() => applyViewMode(), 0);
@@ -4762,8 +5423,10 @@ function renderSpecialPages() {
       return { ch, i, startPage };
     });
 
-    const styleClass = tocStyle === 'modern' ? 'toc-modern' : tocStyle === 'minimal' ? 'toc-minimal' : '';
-    const tocTitleText = tocStyle === 'minimal' ? 'CONTENTS' : 'สารบัญ';
+    const styleClassMap = { modern:'toc-modern', minimal:'toc-minimal', elegant:'toc-elegant', boxed:'toc-boxed', roman:'toc-roman', split:'toc-split', ornate:'toc-ornate' };
+    const styleClass = styleClassMap[tocStyle] || '';
+    const tocTitleText = tocStyle === 'minimal' ? 'CONTENTS' : tocStyle === 'split' ? 'สารบัญ' : 'สารบัญ';
+    const ornateRule = tocStyle === 'ornate' ? `<div class="toc-ornate-rule">— ✦ · ✦ —</div>` : '';
 
     let entries = tocEntries.map(({ ch, i, startPage }) => `
       <div class="toc-entry" onclick="jumpToChapterInPreview(${i})" title="ไปบทที่ ${i+1}">
@@ -4779,6 +5442,7 @@ function renderSpecialPages() {
       <div class="page page-inner page-toc ${styleClass}">
         <div class="page-header"><span></span><span></span></div>
         <div class="toc-title">${tocTitleText}</div>
+        ${ornateRule}
         ${entries}
         ${showPageNum ? `<div class="page-number" style="font-size:${pageNumSize}px">${formatPageNumAdvanced(2)}</div>` : ''}
       </div>
@@ -4900,57 +5564,45 @@ function renderChapterPages() {
     return bodyHtml;
   }
 
-  // ── Helper: measure whether paragraphs overflow a page's body area ──
-  // Returns the page content height available and the actual scrollHeight of the body
-  function measureBodyOverflow(pgParas, isFirstPage, ch, pi, pageMv, pageMh, pageFs, pageLh, pageAlign, pageFont, pageDropCap, pageAccent) {
-    const pageKey = `${ch.id}_${pi}`;
-    const PAGE_H = 794;
-    const headerH = showHeader ? 32 : 0;
-    const footerH = showPageNum ? 32 : 0;
-    const availH = PAGE_H - pageMv - (pageMv + 8) - headerH - footerH;
-
-    // Build a temporary off-screen page to measure
-    const ghost = document.createElement('div');
-    ghost.className = 'page page-inner';
-    ghost.style.cssText = `
-      position:absolute; left:-9999px; top:-9999px;
-      width:559px; height:auto;
-      padding:${pageMv}px ${pageMh}px ${pageMv + 8}px;
-      visibility:hidden; pointer-events:none;
-    `;
-    let innerHtml = '';
-    if (showHeader) innerHtml += `<div class="page-header" style="position:relative;height:${headerH}px"></div>`;
-    if (isFirstPage) {
-      innerHtml += `<div class="page-chapter-num" style="font-size:11px;margin-bottom:4px">บทที่</div>`;
-      innerHtml += `<div class="page-chapter-title" style="font-size:22px;font-weight:700;margin-bottom:6px">${ch.title || ''}</div>`;
-      innerHtml += `<div style="height:28px"></div>`; // divider
-    }
-    innerHtml += buildBodyHTML(pgParas, isFirstPage, pageKey, pageFs, pageLh, pageAlign, pageFont, pageDropCap, pageAccent);
-    ghost.innerHTML = innerHtml;
-    document.body.appendChild(ghost);
-    let usedH = 0;
-    try {
-      const bodyEl = ghost.querySelector('.page-body');
-      usedH = bodyEl ? bodyEl.scrollHeight : 0;
-    } finally {
-      document.body.removeChild(ghost);
-    }
-    return { availH, usedH };
+  // ── Helper: estimate height of a paragraph in pixels ──
+  function estimateParaHeight(text, contentW, pageFs, pageLh) {
+    // Strip markup tags for length estimation
+    const plain = text.replace(/<[^>]+>/g, '').replace(/\*\*(.+?)\*\*/g,'$1').replace(/_(.+?)_/g,'$1').replace(/==(.+?)==/g,'$1').replace(/<[^>]*>/g,'');
+    const charCount = plain.length || 1;
+    // Thai chars average ~0.55–0.58 of fontSize wide (narrower than Latin)
+    // Using 0.57 as empirical blended factor for Thai prose
+    const charsPerLine = Math.max(1, Math.floor(contentW / (pageFs * 0.57)));
+    const lines = Math.max(1, Math.ceil(charCount / charsPerLine));
+    const lineHeightPx = pageFs * pageLh;
+    // paragraph margin-bottom = 0.35em (matches CSS .page-body p)
+    return lines * lineHeightPx + pageFs * 0.35;
   }
 
   chapters.forEach((ch, ci) => {
-    // Split by [PAGE_BREAK] markers first (force page breaks)
     const rawParagraphs = ch.content.split('\n').filter(p => p.trim());
 
-    // ── DOM-based page splitting ──
-    // Build pageGroups by actually measuring overflow using a ghost element
+    // ── Fast estimation-based page splitting ──
+    const PAGE_H = 794;
+    const headerH = showHeader ? 32 : 0;
+    const footerH = showPageNum ? 32 : 0;
+
     const pageGroups = [[]];
+    let usedH = 0;
+
+    // Reserve height for chapter header on first page
+    const chapterHeaderH = (function() {
+      // .page-chapter-num: 11px * ~1.5lh + margin-bottom:24px ≈ 41px
+      // .page-chapter-title: 22px * ~1.4lh + margin-bottom:6px ≈ 37px
+      // .chapter-divider: 2px + margin-bottom:28px ≈ 30px
+      // total ≈ 108px; add small buffer for font rendering variance
+      return 41 + 37 + 30 + 8; // = 116px
+    })();
 
     rawParagraphs.forEach((p) => {
-      // Handle forced page break marker
       if (p.trim() === '[PAGE_BREAK]') {
         if (pageGroups[pageGroups.length - 1].length > 0) {
           pageGroups.push([]);
+          usedH = 0;
         }
         return;
       }
@@ -4964,23 +5616,20 @@ function renderChapterPages() {
       const pageMh = overridePreset ? overridePreset.marginH : mh;
       const pageFs = overridePreset ? overridePreset.fontSize : fs;
       const pageLh = overridePreset ? overridePreset.lineHeight / 100 : lh;
-      const pageAlign = overridePreset ? overridePreset.textAlign : textAlign;
-      const pageFont = overridePreset ? overridePreset.font : bodyFont;
-      const pageDropCap = overridePreset ? overridePreset.dropCap : dropCap;
-      const pageAccent = overridePreset ? overridePreset.accent : null;
 
-      // Try adding this paragraph to the current page
-      const candidate = [...pageGroups[curPgIdx], p];
-      const { availH, usedH } = measureBodyOverflow(
-        candidate, isFirstPage, ch, curPgIdx,
-        pageMv, pageMh, pageFs, pageLh, pageAlign, pageFont, pageDropCap, pageAccent
-      );
+      const contentW = 559 - 2 * pageMh;
+      const availH = PAGE_H - pageMv - (pageMv + 8) - headerH - footerH
+                     - (isFirstPage ? chapterHeaderH : 0);
 
-      if (usedH > availH && pageGroups[curPgIdx].length > 0) {
-        // Overflow — push paragraph to new page
+      const paraH = estimateParaHeight(p, contentW, pageFs, pageLh);
+
+      if (usedH + paraH > availH && pageGroups[curPgIdx].length > 0) {
+        // Start new page
         pageGroups.push([p]);
+        usedH = paraH;
       } else {
         pageGroups[curPgIdx].push(p);
+        usedH += paraH;
       }
     });
     if (rawParagraphs.length === 0) pageGroups[0] = [];
@@ -5028,7 +5677,7 @@ function renderChapterPages() {
 
       if (isFirstPage) {
         html += `<div class="page-chapter-num" style="color:${pageAccent || 'var(--accent)'}">บทที่ ${ci + 1}</div>`;
-        html += `<div class="page-chapter-title" style="font-family:'Playfair Display',serif;color:${pageAccent || 'var(--ink)'}">${ch.title || 'บทที่ ' + (ci+1)}</div>`;
+        html += `<div class="page-chapter-title" contenteditable="true" spellcheck="false" data-ch-id="${ch.id}" style="font-family:'Playfair Display',serif;color:${pageAccent || 'var(--ink)'};" title="คลิกเพื่อแก้ชื่อบท">${ch.title || 'บทที่ ' + (ci+1)}</div>`;
         html += dividerHTML;
         if (ch.imageData) {
           const sz = ch.imageSize || 100;
@@ -5061,6 +5710,26 @@ function renderChapterPages() {
 
       page.innerHTML = html;
 
+      // Wire chapter title inline edit → sync back to chapter data
+      const chTitleEl = page.querySelector('.page-chapter-title[contenteditable]');
+      if (chTitleEl) {
+        chTitleEl.addEventListener('blur', () => {
+          const newTitle = chTitleEl.textContent.trim();
+          if (newTitle && newTitle !== ch.title) {
+            ch.title = newTitle;
+            renderChapterList();
+            const ti = document.getElementById('chapterTitleInput');
+            if (ch.id === currentChapterId && ti) ti.value = newTitle;
+            recordHistoryDebounced();
+            showToast('✏ แก้ชื่อบทแล้ว');
+          }
+        });
+        chTitleEl.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') { e.preventDefault(); chTitleEl.blur(); }
+          if (e.key === 'Escape') { chTitleEl.textContent = ch.title || ''; chTitleEl.blur(); }
+        });
+      }
+
       // Add page layout pill button (after innerHTML so it's not destroyed)
       const pill = document.createElement('div');
       pill.className = 'page-layout-pill';
@@ -5085,6 +5754,8 @@ function renderChapterPages() {
           const ph = bodyEl.querySelector('[data-placeholder]');
           if (ph) ph.remove();
           bodyEl.style.boxShadow = 'none';
+          // Track active page-body for inline fmt bar
+          window._activePageBody = bodyEl;
         });
         // Debounced sync on input
         let _syncTimer;
@@ -5092,6 +5763,9 @@ function renderChapterPages() {
           clearTimeout(_syncTimer);
           _syncTimer = setTimeout(() => syncPageBodyToChapter(bodyEl, ch.id), 800);
         });
+        // Show inline format bar on text selection (same as chapterEditor)
+        bodyEl.addEventListener('mouseup', () => showInlineFmtBarOnSelect(bodyEl));
+        bodyEl.addEventListener('keyup',   () => showInlineFmtBarOnSelect(bodyEl));
         // Show subtle edit ring on hover
         bodyEl.addEventListener('mouseenter', () => {
           if (document.activeElement !== bodyEl)
@@ -5374,15 +6048,50 @@ async function exportDOCX_fallback() {
 
   const esc = s => s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 
+  // ── Strip/convert markup tags to plain text for DOCX runs ──
+  function stripMarkupToRuns(text, baseOpts = {}) {
+    // Returns array of run objects: { text, bold, italic, color, sz }
+    const defaultSz = baseOpts.sz || 24;
+    const runs = [];
+    // Parse inline markup into segments
+    // Supported: **bold**, _italic_, <color:#hex>text</color>, <size:N>text</size>, <font:...>text</font>, ==highlight==, `code`, «text»
+    // Strategy: walk through with regex to split into tagged/untagged segments
+    const segments = [];
+    let remaining = text;
+    const tagRe = /(\*\*(.+?)\*\*|__(.+?)__|_(.+?)_|==(.+?)==|`(.+?)`|<color:(#[0-9a-fA-F]{3,6})>(.+?)<\/color>|<size:(\d+)>(.+?)<\/size>|<font:[^>]+>(.+?)<\/font>|«(.+?)»)/;
+    while (remaining.length > 0) {
+      const m = tagRe.exec(remaining);
+      if (!m) { segments.push({ text: remaining, bold: false, italic: false }); break; }
+      if (m.index > 0) segments.push({ text: remaining.slice(0, m.index), bold: false, italic: false });
+      const full = m[0];
+      if (full.startsWith('**')) segments.push({ text: m[2], bold: true, italic: false });
+      else if (full.startsWith('__')) segments.push({ text: m[3], underline: true });
+      else if (full.startsWith('_')) segments.push({ text: m[4], italic: true });
+      else if (full.startsWith('==')) segments.push({ text: m[5] });
+      else if (full.startsWith('`')) segments.push({ text: m[6] });
+      else if (full.startsWith('<color:')) segments.push({ text: m[8], color: m[7].replace('#','') });
+      else if (full.startsWith('<size:')) segments.push({ text: m[10], sz: Math.round(parseInt(m[9]) * 2) }); // OOXML half-points
+      else if (full.startsWith('<font:')) segments.push({ text: m[11] });
+      else if (full.startsWith('«')) segments.push({ text: '«' + m[12] + '»', italic: true });
+      else segments.push({ text: full });
+      remaining = remaining.slice(m.index + full.length);
+    }
+    return segments.map(seg => {
+      const bold = (baseOpts.bold || seg.bold) ? '<w:b/>' : '';
+      const italic = (baseOpts.italic || seg.italic) ? '<w:i/>' : '';
+      const underline = seg.underline ? '<w:u w:val="single"/>' : '';
+      const color = (seg.color || baseOpts.color) ? `<w:color w:val="${seg.color || baseOpts.color}"/>` : '';
+      const sz = seg.sz || defaultSz;
+      return `<w:r><w:rPr>${bold}${italic}${underline}${color}<w:sz w:val="${sz}"/><w:szCs w:val="${sz}"/><w:rFonts w:ascii="Sarabun" w:hAnsi="Sarabun" w:cs="Sarabun"/></w:rPr><w:t xml:space="preserve">${esc(seg.text)}</w:t></w:r>`;
+    }).join('');
+  }
+
   let bodyXml = '';
   const p = (text, opts = {}) => {
-    const sz = opts.sz || 24;
-    const bold = opts.bold ? '<w:b/>' : '';
-    const italic = opts.italic ? '<w:i/>' : '';
-    const color = opts.color ? `<w:color w:val="${opts.color}"/>` : '';
     const jc = opts.center ? '<w:jc w:val="center"/>' : '';
     const before = opts.before ? `<w:spacing w:before="${opts.before}"/>` : '';
-    return `<w:p><w:pPr>${jc}${before}</w:pPr><w:r><w:rPr>${bold}${italic}${color}<w:sz w:val="${sz}"/><w:szCs w:val="${sz}"/><w:rFonts w:ascii="Sarabun" w:hAnsi="Sarabun" w:cs="Sarabun"/></w:rPr><w:t xml:space="preserve">${esc(text)}</w:t></w:r></w:p>`;
+    const runsXml = stripMarkupToRuns(text, opts);
+    return `<w:p><w:pPr>${jc}${before}</w:pPr>${runsXml}</w:p>`;
   };
   const pageBreak = () => `<w:p><w:r><w:br w:type="page"/></w:r></w:p>`;
 
@@ -5809,27 +6518,27 @@ function wrapSelectedText(style) {
 
 
 let inlineFmtBarTimer;
-function showInlineFmtBarOnSelect() {
+function showInlineFmtBarOnSelect(sourceEl) {
   clearTimeout(inlineFmtBarTimer);
   inlineFmtBarTimer = setTimeout(() => {
     const sel = window.getSelection();
     const bar = document.getElementById('inlineFmtBar');
     if (!bar) return;
     if (sel && !sel.isCollapsed && sel.toString().length > 0) {
-      // Check selection is inside chapterEditor
+      // Check selection is inside chapterEditor OR any page-body
       const ed = weGetEditor();
-      if (!ed) { hideInlineFmtBar(); return; }
       const anchorNode = sel.anchorNode;
-      if (!ed.contains(anchorNode)) { hideInlineFmtBar(); return; }
-      // Position near selection (bar is position:fixed — no scrollY offset needed)
+      const inEditor = ed && ed.contains(anchorNode);
+      const inPageBody = anchorNode && anchorNode.parentElement && anchorNode.parentElement.closest('.page-body');
+      if (!inEditor && !inPageBody) { hideInlineFmtBar(); return; }
+      // Position bar near selection
       const range = sel.getRangeAt(0);
       const rect = range.getBoundingClientRect();
-      // Measure actual bar width after show
       bar.classList.add('show');
       const barW = bar.offsetWidth || 360;
       let left = rect.left + rect.width / 2 - barW / 2;
-      let top = rect.top - barW * 0.14 - 10; // ~50px above selection
-      if (top < 56) top = rect.bottom + 8;   // flip below if near top
+      let top = rect.top - 44;
+      if (top < 56) top = rect.bottom + 8;
       left = Math.max(8, Math.min(window.innerWidth - barW - 8, left));
       top  = Math.max(8, Math.min(window.innerHeight - 60, top));
       bar.style.top  = top  + 'px';
@@ -5844,28 +6553,35 @@ function hideInlineFmtBar() {
   document.getElementById('inlineFmtBar')?.classList.remove('show');
 }
 
-// Hide inline fmt bar when clicking outside editor or bar
+// Hide inline fmt bar when clicking outside editor/page-body or bar
 document.addEventListener('mousedown', (e) => {
   const bar = document.getElementById('inlineFmtBar');
   const ed  = document.getElementById('chapterEditor');
   if (!bar) return;
   if (bar.contains(e.target)) return; // clicked inside bar — let button work
   if (ed && ed.contains(e.target)) return; // still inside editor
+  if (e.target.closest('.page-body')) return; // clicked in a page-body
   hideInlineFmtBar();
 }, true);
 
 // ── Rich-text parser: convert markdown-ish markup to HTML ──
 function parseRichText(text) {
-  return text
+  // Handle properly-closed inline tags ([\s\S]+? allows multiline content within a single para call)
+  let out = text
     .replace(/\*\*(.+?)\*\*/g, '<strong style="font-weight:700;color:var(--accent)">$1</strong>')
     .replace(/__(.+?)__/g, '<span style="text-decoration:underline">$1</span>')
     .replace(/_(.+?)_/g, '<em>$1</em>')
     .replace(/==(.+?)==/g, '<mark style="background:rgba(201,162,39,0.25);border-radius:2px;padding:0 2px">$1</mark>')
     .replace(/`(.+?)`/g, '<code style="font-family:monospace;background:rgba(139,69,19,0.1);border-radius:3px;padding:0 4px;font-size:0.88em">$1</code>')
-    .replace(/<color:(#[0-9a-fA-F]{3,6})>(.+?)<\/color>/g, '<span style="color:$1">$2</span>')
-    .replace(/<size:(\d+)>(.+?)<\/size>/g, '<span style="font-size:$1px">$2</span>')
-    .replace(/<font:([^>]+)>(.+?)<\/font>/g, '<span style="font-family:\'$1\',sans-serif">$2</span>')
+    .replace(/<color:(#[0-9a-fA-F]{3,6})>([\s\S]+?)<\/color>/g, '<span style="color:$1">$2</span>')
+    .replace(/<size:(\d+)>([\s\S]+?)<\/size>/g, '<span style="font-size:$1px">$2</span>')
+    .replace(/<font:([^>]+)>([\s\S]+?)<\/font>/g, '<span style="font-family:\'$1\',sans-serif">$2</span>')
     .replace(/«(.+?)»/g, '<span style="font-style:italic;color:var(--gold)">«$1»</span>');
+  // Strip any remaining unclosed/malformed markup tags
+  out = out.replace(/<size:\d+>/g, '').replace(/<\/size>/g, '');
+  out = out.replace(/<color:#[0-9a-fA-F]{3,6}>/g, '').replace(/<\/color>/g, '');
+  out = out.replace(/<font:[^>]+>/g, '').replace(/<\/font>/g, '');
+  return out;
 }
 
 // ── Sync field from context panel to main sidebar ──
@@ -7394,13 +8110,15 @@ function syncPageBodyToChapter(bodyEl, chapterId) {
   allBodies.forEach(b => {
     b.querySelectorAll('p').forEach(p => {
       if (p.dataset.placeholder) return; // skip placeholder
-      const text = p.innerText.trim();
-      if (text) paragraphs.push(text);
+      // Use weNodeToMarkup to preserve bold/italic/color formatting
+      // Use trimEnd only — preserve leading whitespace/indent (Thai \u3000, spaces)
+      const markup = weNodeToMarkup(p).trimEnd();
+      if (markup) paragraphs.push(markup);
     });
     // If no <p> tags, fall back to innerText lines
     if (b.querySelectorAll('p').length === 0) {
       b.innerText.split('\n').forEach(line => {
-        const t = line.trim();
+        const t = line.trimEnd();
         if (t) paragraphs.push(t);
       });
     }
@@ -8383,7 +9101,7 @@ async function callAI(systemPrompt, userContent) {
 
   if (provider === 'gemini') {
     // Google Gemini API (ฟรี quota สูง)
-    const model = 'gemini-2.0-flash';
+    const model = 'gemini-1.5-flash';
     const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`;
     const res = await fetch(url, {
       method: 'POST',
