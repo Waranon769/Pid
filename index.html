@@ -781,11 +781,36 @@ window.__docxLoadFailed = true; // always use our own writer
   /* ── TOC page ── */
   .page-toc { padding: 56px 52px; }
   .toc-title { font-family: 'Playfair Display', serif; font-size: 22px; font-weight: 700; color: var(--ink); margin-bottom: 28px; }
-  .toc-entry { display: flex; align-items: baseline; gap: 6px; font-size: 14px; color: var(--ink); margin-bottom: 10px; }
+  .toc-entry { display: flex; align-items: baseline; gap: 6px; font-size: 14px; color: var(--ink); margin-bottom: 10px; cursor: pointer; transition: color 0.12s; }
+  .toc-entry:hover { color: var(--accent); }
   .toc-entry .toc-ch { color: var(--ink-muted); font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; min-width: 52px; }
   .toc-entry .toc-name { flex: 1; }
   .toc-entry .toc-dots { flex: 1; border-bottom: 1px dotted var(--border-dark); margin: 0 6px 4px; }
   .toc-entry .toc-pg { color: var(--ink-muted); font-size: 12px; }
+  .toc-link-badge { font-size: 9px; color: var(--accent); margin-left: 4px; opacity: 0.6; }
+
+  /* TOC style: modern */
+  .toc-modern .toc-title { font-size: 18px; letter-spacing: 0.18em; text-transform: uppercase; border-bottom: 2px solid var(--accent); padding-bottom: 12px; }
+  .toc-modern .toc-entry { border-bottom: 1px solid var(--border); padding: 8px 0; margin-bottom: 0; }
+  .toc-modern .toc-entry .toc-dots { display: none; }
+  .toc-modern .toc-entry .toc-ch { background: var(--accent); color: #fff; border-radius: 3px; padding: 1px 6px; font-size: 10px; }
+  .toc-modern .toc-entry .toc-pg { background: var(--panel-bg); border-radius: 10px; padding: 1px 8px; font-size: 11px; font-weight: 700; }
+
+  /* TOC style: minimal */
+  .toc-minimal .toc-title { font-size: 13px; letter-spacing: 0.25em; text-transform: uppercase; color: var(--ink-muted); font-weight: 400; font-family: 'Sarabun', sans-serif; margin-bottom: 32px; }
+  .toc-minimal .toc-entry { font-size: 15px; margin-bottom: 14px; }
+  .toc-minimal .toc-entry .toc-ch { display: none; }
+  .toc-minimal .toc-entry .toc-dots { border-bottom: none; }
+  .toc-minimal .toc-entry .toc-pg { font-family: 'Playfair Display', serif; font-style: italic; font-size: 13px; }
+
+  /* ── Editable special pages ── */
+  .special-editable {
+    outline: none; cursor: text;
+    border-radius: 3px; transition: outline 0.15s;
+  }
+  .special-editable:hover { outline: 1.5px dashed rgba(139,69,19,0.25); }
+  .special-editable:focus { outline: 1.5px dashed rgba(139,69,19,0.5) !important; }
+  .special-editable:empty::before { content: attr(data-ph); color: #ccc; font-style: italic; pointer-events: none; }
 
   /* ── Dedication / Preface page ── */
   .page-dedication { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; padding: 60px 52px; }
@@ -1790,6 +1815,7 @@ window.__docxLoadFailed = true; // always use our own writer
       <div class="ribbon-tab" data-rtab="theme" onclick="switchRibbonTab('theme',this)">✨ ธีม</div>
       <div class="ribbon-tab" data-rtab="view" onclick="switchRibbonTab('view',this)">👁 มุมมอง</div>
       <div class="ribbon-tab" data-rtab="spellcheck" onclick="switchRibbonTab('spellcheck',this)">🔍 ตรวจคำ</div>
+      <div class="ribbon-tab" data-rtab="ai" onclick="switchRibbonTab('ai',this)">🤖 AI</div>
     </div>
     <button class="ribbon-collapse-btn" id="ribbonCollapseBtn" onclick="toggleRibbon()" title="ซ่อน/แสดง Ribbon">▲</button>
   </div>
@@ -2245,6 +2271,159 @@ window.__docxLoadFailed = true; // always use our own writer
       <div class="ribbon-group-label">สถานะ</div>
     </div>
   </div>
+  </div>
+
+  <!-- ── แท็บ AI ── -->
+  <div class="ribbon-body" id="rtab-ai">
+    <!-- กลุ่ม: API Key -->
+    <div class="ribbon-group">
+      <div class="ribbon-row" style="gap:4px;align-items:center">
+        <input type="password" id="ai-api-key" placeholder="sk-ant-..." autocomplete="off"
+          style="width:160px;padding:3px 8px;font-size:11px;border:1px solid rgba(255,255,255,0.15);border-radius:4px;background:rgba(255,255,255,0.07);color:#c8c4be;font-family:'Sarabun',sans-serif;outline:none;margin:0"
+          oninput="aiSaveKey(this.value)" title="Anthropic API Key (เก็บใน localStorage บนเครื่องคุณเท่านั้น)">
+        <button class="rb" onclick="aiToggleKeyVisible()" title="แสดง/ซ่อน Key" id="ai-eye-btn">
+          <svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+        </button>
+        <button class="rb" onclick="aiClearKey()" title="ลบ Key">
+          <svg viewBox="0 0 24 24"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/></svg>
+        </button>
+      </div>
+      <div class="ribbon-group-label">API Key</div>
+    </div>
+
+    <!-- กลุ่ม: สร้าง/ต่อเนื้อเรื่อง -->
+    <div class="ribbon-group">
+      <div class="ribbon-row" style="gap:4px">
+        <button class="rb rb-lg" onclick="aiFeature('continue')" title="ต่อเนื้อเรื่องต่อจากข้อความล่าสุด">
+          <svg viewBox="0 0 24 24"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg>
+          <span class="rb-label">ต่อเรื่อง</span>
+        </button>
+        <button class="rb rb-lg" onclick="aiFeature('outline')" title="แปลงโครงเรื่อง → เนื้อหา">
+          <svg viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+          <span class="rb-label">โครง→เรื่อง</span>
+        </button>
+      </div>
+      <div class="ribbon-group-label">สร้างเนื้อหา</div>
+    </div>
+
+    <!-- กลุ่ม: แก้ไข/ปรับ -->
+    <div class="ribbon-group">
+      <div class="ribbon-row" style="gap:4px">
+        <button class="rb rb-lg" onclick="aiFeature('rewrite')" title="สรุป/ปรับภาษา/แก้ style">
+          <svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+          <span class="rb-label">ปรับ Style</span>
+        </button>
+        <button class="rb rb-lg" onclick="aiFeature('suggest')" title="แนะนำประโยคต่อ">
+          <svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+          <span class="rb-label">แนะนำต่อ</span>
+        </button>
+      </div>
+      <div class="ribbon-group-label">ปรับแต่ง</div>
+    </div>
+
+    <!-- สถานะ -->
+    <div class="ribbon-group" style="flex:1;min-width:160px">
+      <div style="display:flex;flex-direction:column;gap:3px">
+        <div id="ai-provider-badge" style="font-size:10px;font-weight:700;color:#1a73e8;letter-spacing:0.05em;cursor:pointer" onclick="document.getElementById('ai-key-modal').style.display='flex';aiUpdateProviderUI()">✦ Gemini (ฟรี)</div>
+        <div id="ai-status" style="font-size:11px;color:var(--ink-muted);min-height:20px">ใส่ API Key แล้วเลือกฟีเจอร์</div>
+      </div>
+      <div class="ribbon-group-label">สถานะ</div>
+    </div>
+  </div>
+</div>
+
+<!-- ── Modal AI Result ── -->
+<div id="ai-modal" style="display:none;position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.65);align-items:center;justify-content:center">
+  <div style="background:var(--paper);border-radius:12px;width:min(720px,95vw);max-height:88vh;display:flex;flex-direction:column;box-shadow:0 20px 60px rgba(0,0,0,0.4);overflow:hidden">
+    <!-- Header -->
+    <div style="background:var(--ink);color:#e8e4de;padding:14px 20px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0">
+      <div id="ai-modal-title" style="font-family:'Playfair Display',serif;font-size:16px;font-weight:700;color:var(--gold)">🤖 AI</div>
+      <button onclick="document.getElementById('ai-modal').style.display='none'" style="background:none;border:none;color:#9a9590;font-size:20px;cursor:pointer;line-height:1">✕</button>
+    </div>
+    <!-- Prompt area -->
+    <div id="ai-prompt-wrap" style="padding:12px 20px;background:var(--panel-bg);border-bottom:1px solid var(--border);flex-shrink:0">
+      <div id="ai-prompt-label" style="font-size:11px;font-weight:700;color:var(--ink-muted);letter-spacing:0.08em;text-transform:uppercase;margin-bottom:6px">คำสั่งพิเศษ (ไม่จำเป็น)</div>
+      <textarea id="ai-prompt-extra" rows="2" placeholder="เช่น: ให้เนื้อหายาว 3 ย่อหน้า, ใช้ภาษาสุภาพ, เพิ่มบทสนทนา..."
+        style="width:100%;resize:vertical;font-family:'Sarabun',sans-serif;font-size:13px;border:1px solid var(--border);border-radius:6px;padding:8px 12px;background:#fff;color:var(--ink);outline:none;min-height:52px;margin:0"></textarea>
+      <div style="display:flex;gap:8px;margin-top:8px;align-items:center">
+        <select id="ai-scope" style="font-size:12px;padding:4px 8px;border:1px solid var(--border);border-radius:4px;background:#fff;color:var(--ink);font-family:'Sarabun',sans-serif">
+          <option value="current">บทปัจจุบัน</option>
+          <option value="selection">เฉพาะที่เลือก</option>
+          <option value="last500">500 ตัวอักษรท้าย</option>
+        </select>
+        <button id="ai-run-btn" onclick="aiRun()"
+          style="padding:6px 18px;background:var(--accent);color:#fff;border:none;border-radius:6px;font-size:13px;font-family:'Sarabun',sans-serif;cursor:pointer;font-weight:600;display:flex;align-items:center;gap:6px">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polygon points="5 3 19 12 5 21 5 3"/></svg>
+          เริ่ม
+        </button>
+        <div id="ai-spinner" style="display:none;font-size:12px;color:var(--accent)">⏳ กำลังประมวลผล...</div>
+      </div>
+    </div>
+    <!-- Progress -->
+    <div id="ai-progress-wrap" style="padding:8px 20px;background:var(--panel-bg);border-bottom:1px solid var(--border);flex-shrink:0;display:none">
+      <div style="height:5px;background:var(--border);border-radius:3px;overflow:hidden">
+        <div id="ai-progress-bar" style="height:100%;width:0%;background:linear-gradient(90deg,var(--accent),var(--gold));border-radius:3px;transition:width 0.4s"></div>
+      </div>
+    </div>
+    <!-- Result -->
+    <div style="overflow-y:auto;flex:1;padding:16px 20px">
+      <div id="ai-result-text" style="font-family:'Sarabun',sans-serif;font-size:14px;line-height:1.85;color:var(--ink);white-space:pre-wrap;min-height:80px"></div>
+    </div>
+    <!-- Footer actions -->
+    <div style="padding:12px 20px;border-top:1px solid var(--border);display:flex;gap:8px;justify-content:flex-end;flex-shrink:0;flex-wrap:wrap">
+      <button id="ai-btn-copy" onclick="aiCopyResult()" style="padding:7px 16px;background:var(--panel-bg);color:var(--ink);border:1px solid var(--border);border-radius:6px;font-size:13px;font-family:'Sarabun',sans-serif;cursor:pointer;font-weight:600;display:none">📋 คัดลอก</button>
+      <button id="ai-btn-insert" onclick="aiInsertResult()" style="padding:7px 16px;background:#16a34a;color:#fff;border:none;border-radius:6px;font-size:13px;font-family:'Sarabun',sans-serif;cursor:pointer;font-weight:600;display:none">✅ ใส่ในบทปัจจุบัน</button>
+      <button id="ai-btn-replace" onclick="aiReplaceResult()" style="padding:7px 16px;background:var(--accent);color:#fff;border:none;border-radius:6px;font-size:13px;font-family:'Sarabun',sans-serif;cursor:pointer;font-weight:600;display:none">🔄 แทนที่เนื้อหา</button>
+      <button onclick="document.getElementById('ai-modal').style.display='none'" style="padding:7px 16px;background:transparent;color:var(--ink-muted);border:1px solid var(--border);border-radius:6px;font-size:13px;font-family:'Sarabun',sans-serif;cursor:pointer">ปิด</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Modal API Key Setup ── -->
+<div id="ai-key-modal" style="display:none;position:fixed;inset:0;z-index:10000;background:rgba(0,0,0,0.7);align-items:center;justify-content:center">
+  <div style="background:var(--paper);border-radius:12px;width:min(500px,95vw);box-shadow:0 20px 60px rgba(0,0,0,0.4);overflow:hidden">
+    <div style="background:var(--ink);color:#e8e4de;padding:14px 20px;display:flex;align-items:center;justify-content:space-between">
+      <div style="font-family:'Playfair Display',serif;font-size:15px;font-weight:700;color:var(--gold)">🔑 ตั้งค่า AI Provider</div>
+      <button onclick="document.getElementById('ai-key-modal').style.display='none'" style="background:none;border:none;color:#9a9590;font-size:20px;cursor:pointer">✕</button>
+    </div>
+    <div style="padding:20px">
+      <!-- Provider tabs -->
+      <div style="display:flex;gap:8px;margin-bottom:16px">
+        <button onclick="aiModalSelectProvider('gemini')" id="ai-tab-gemini"
+          style="flex:1;padding:10px;border-radius:8px;border:2px solid #1a73e8;background:#e8f0fe;color:#1a73e8;font-family:'Sarabun',sans-serif;font-size:13px;font-weight:700;cursor:pointer">
+          ✦ Google Gemini<br><span style="font-size:10px;font-weight:400">ฟรี • quota สูง</span>
+        </button>
+        <button onclick="aiModalSelectProvider('claude')" id="ai-tab-claude"
+          style="flex:1;padding:10px;border-radius:8px;border:2px solid var(--border);background:var(--panel-bg);color:var(--ink-muted);font-family:'Sarabun',sans-serif;font-size:13px;font-weight:700;cursor:pointer">
+          ◆ Anthropic Claude<br><span style="font-size:10px;font-weight:400">มีค่าใช้จ่าย</span>
+        </button>
+      </div>
+      <input type="hidden" id="ai-provider-select" value="gemini">
+
+      <!-- Gemini instructions -->
+      <div id="ai-guide-gemini" style="margin-bottom:12px;padding:10px;background:#e8f0fe;border-radius:8px;font-size:12px;color:#1a3a5c;line-height:1.7">
+        1. ไปที่ <a href="https://aistudio.google.com/apikey" target="_blank" style="color:#1a73e8;font-weight:700">aistudio.google.com/apikey</a><br>
+        2. คลิก <strong>Create API Key</strong><br>
+        3. Copy key ที่ขึ้นต้นด้วย <code style="background:#fff;padding:1px 5px;border-radius:3px">AIza...</code><br>
+        4. วางในช่องด้านล่าง ✅ <strong>ฟรี ไม่ต้องใส่บัตรเครดิต</strong>
+      </div>
+      <div id="ai-guide-claude" style="display:none;margin-bottom:12px;padding:10px;background:#fef9f0;border-radius:8px;font-size:12px;color:#5a3010;line-height:1.7">
+        1. ไปที่ <a href="https://console.anthropic.com" target="_blank" style="color:var(--accent);font-weight:700">console.anthropic.com</a><br>
+        2. เมนู <strong>API Keys</strong> → <strong>Create Key</strong><br>
+        3. Copy key ที่ขึ้นต้นด้วย <code style="background:#fff;padding:1px 5px;border-radius:3px">sk-ant-...</code>
+      </div>
+
+      <label style="font-size:12px;font-weight:700;color:var(--ink-muted);display:block;margin-bottom:6px">API Key</label>
+      <input type="password" id="ai-key-modal-input" placeholder="AIza..." autocomplete="off"
+        style="width:100%;padding:9px 12px;font-size:13px;border:1px solid var(--border);border-radius:6px;font-family:'Sarabun',sans-serif;outline:none;margin-bottom:14px"
+        onkeydown="if(event.key==='Enter')aiSaveKeyModal()">
+      <div style="display:flex;gap:8px;justify-content:flex-end">
+        <button onclick="document.getElementById('ai-key-modal').style.display='none'" style="padding:7px 16px;background:transparent;border:1px solid var(--border);border-radius:6px;font-size:13px;font-family:'Sarabun',sans-serif;cursor:pointer;color:var(--ink-muted)">ยกเลิก</button>
+        <button onclick="aiSaveKeyModal()" style="padding:7px 18px;background:var(--accent);color:#fff;border:none;border-radius:6px;font-size:13px;font-family:'Sarabun',sans-serif;cursor:pointer;font-weight:600">บันทึก Key</button>
+      </div>
+      <p style="margin-top:12px;font-size:11px;color:var(--ink-faint);text-align:center">🔒 Key เก็บใน localStorage บนเบราว์เซอร์คุณเท่านั้น ไม่มีการส่งออกไปที่อื่น</p>
+    </div>
+  </div>
 </div>
 
 <!-- Modal ผลตรวจคำ -->
@@ -2417,7 +2596,15 @@ window.__docxLoadFailed = true; // always use our own writer
       <div class="sidebar-body">
       <div class="toggle-row">
         <span class="toggle-label">สารบัญ (TOC)</span>
-        <label class="toggle"><input type="checkbox" id="showTOC" onchange="updatePreview()"><span class="toggle-slider"></span></label>
+        <label class="toggle"><input type="checkbox" id="showTOC" onchange="updatePreview();document.getElementById('tocStyleRow').style.display=this.checked?'block':'none'"><span class="toggle-slider"></span></label>
+      </div>
+      <div id="tocStyleRow" style="display:none;margin-bottom:10px">
+        <label style="font-size:11px;margin-bottom:4px">สไตล์สารบัญ</label>
+        <div style="display:flex;gap:5px">
+          <button class="rb-text active" id="toc-style-classic" onclick="setTocStyle('classic',this)" style="font-size:10px;flex:1">📜 Classic</button>
+          <button class="rb-text" id="toc-style-modern" onclick="setTocStyle('modern',this)" style="font-size:10px;flex:1">◼ Modern</button>
+          <button class="rb-text" id="toc-style-minimal" onclick="setTocStyle('minimal',this)" style="font-size:10px;flex:1">— Minimal</button>
+        </div>
       </div>
       <div class="toggle-row">
         <span class="toggle-label">คำนำ (Preface)</span>
@@ -4470,20 +4657,29 @@ function updatePreview() {
   renderChapterPages();
 }
 
+let tocStyle = 'classic'; // 'classic' | 'modern' | 'minimal'
+
+function setTocStyle(style, el) {
+  tocStyle = style;
+  document.querySelectorAll('#toc-style-classic,#toc-style-modern,#toc-style-minimal').forEach(b => b.classList.remove('active'));
+  if (el) el.classList.add('active');
+  renderSpecialPages();
+  setTimeout(() => applyViewMode(), 0);
+}
+
 function renderSpecialPages() {
-  const previewArea = document.getElementById('previewArea');
+  // Show/hide TOC style picker
+  const showTOCChk = document.getElementById('showTOC').checked;
+  const tocStyleRow = document.getElementById('tocStyleRow');
+  if (tocStyleRow) tocStyleRow.style.display = showTOCChk ? 'block' : 'none';
+
   // Remove existing special pages
   document.querySelectorAll('.special-page-wrap').forEach(el => el.remove());
 
-  const titlePageLabel = document.querySelector('.page-label[data-page="title"]');
-  const insertBefore = titlePageLabel || document.getElementById('pageTitlePage').nextElementSibling;
-
-  const showTOC = document.getElementById('showTOC').checked;
   const showPreface = document.getElementById('showPreface').checked;
   const showDedication = document.getElementById('showDedication').checked;
   const titlePageNode = document.getElementById('pageTitlePage');
 
-  // Insert after title page: TOC, Preface, Dedication
   let afterNode = titlePageNode;
 
   function insertSpecialPage(html) {
@@ -4493,77 +4689,133 @@ function renderSpecialPages() {
     wrap.innerHTML = html;
     afterNode.after(wrap);
     afterNode = wrap.lastElementChild || wrap;
+    return wrap;
   }
 
+  // ── Dedication (editable) ──
   if (showDedication) {
     const text = document.getElementById('dedicationText').value || 'สำหรับทุกคนที่เชื่อในเรื่องเล่า...';
-    insertSpecialPage(`
+    const wrap = insertSpecialPage(`
       <div class="page-label">คำอุทิศ</div>
       <div class="page page-inner page-dedication">
-        <div class="dedication-label">อุทิศแด่</div>
-        <div class="dedication-text">${text.replace(/\n/g,'<br>')}</div>
+        <div class="dedication-label" contenteditable="true" spellcheck="false"
+          class="special-editable" data-field="dedicationLabel"
+          style="outline:none;cursor:text;border-radius:3px"
+          data-ph="อุทิศแด่">อุทิศแด่</div>
+        <div class="dedication-text special-editable" contenteditable="true" spellcheck="false"
+          data-field="dedicationText" data-ph="เขียนคำอุทิศ..."
+          style="outline:none;cursor:text">${text.replace(/\n/g,'<br>')}</div>
       </div>
     `);
+    // Sync editable back to textarea
+    wrap.querySelectorAll('[data-field="dedicationText"]').forEach(el => {
+      el.addEventListener('input', () => {
+        document.getElementById('dedicationText').value = el.innerText;
+      });
+      el.addEventListener('focus', () => { el.style.outline = '1.5px dashed rgba(139,69,19,0.45)'; });
+      el.addEventListener('blur',  () => { el.style.outline = 'none'; });
+    });
   }
+
+  // ── Preface (editable) ──
   if (showPreface) {
     const ptitle = document.getElementById('prefaceTitle').value || 'คำนำ';
     const pcontent = document.getElementById('prefaceContent').value || '';
     const paras = pcontent.split('\n').filter(p => p.trim()).map(p => `<p style="margin-bottom:1em">${p}</p>`).join('');
-    insertSpecialPage(`
+    const wrap = insertSpecialPage(`
       <div class="page-label">คำนำ</div>
       <div class="page page-inner page-preface">
-        <div class="preface-title">${ptitle}</div>
-        <div class="preface-body">${paras || '<p style="color:#ccc;font-style:italic">เขียนคำนำในแผงซ้าย...</p>'}</div>
+        <div class="preface-title special-editable" contenteditable="true" spellcheck="false"
+          data-field="prefaceTitle" data-ph="หัวข้อคำนำ"
+          style="outline:none;cursor:text">${ptitle}</div>
+        <div class="preface-body special-editable" contenteditable="true" spellcheck="false"
+          data-field="prefaceContent" data-ph="เขียนคำนำที่นี่..."
+          style="outline:none;cursor:text">${paras || '<p style="color:#ccc;font-style:italic">คลิกเพื่อพิมพ์คำนำ...</p>'}</div>
       </div>
     `);
+    wrap.querySelectorAll('[data-field="prefaceTitle"]').forEach(el => {
+      el.addEventListener('input', () => {
+        document.getElementById('prefaceTitle').value = el.innerText;
+      });
+      el.addEventListener('focus', () => { el.style.outline = '1.5px dashed rgba(139,69,19,0.45)'; });
+      el.addEventListener('blur',  () => { el.style.outline = 'none'; });
+    });
+    wrap.querySelectorAll('[data-field="prefaceContent"]').forEach(el => {
+      el.addEventListener('input', () => {
+        document.getElementById('prefaceContent').value = el.innerText;
+      });
+      el.addEventListener('focus', () => { el.style.outline = '1.5px dashed rgba(139,69,19,0.45)'; });
+      el.addEventListener('blur',  () => { el.style.outline = 'none'; });
+    });
   }
-  if (showTOC) {
-    // Calculate real page numbers based on content length
-    // Estimate: A5 page ~1800 chars per page (at 15px Sarabun, 1.85lh, standard margins)
+
+  // ── TOC ──
+  if (showTOCChk) {
     const CHARS_PER_PAGE = 1650;
-    const FIXED_PAGES_BEFORE = 3; // cover + title + TOC
+    const FIXED_PAGES_BEFORE = 3;
     let runningPage = FIXED_PAGES_BEFORE + 1;
     const tocEntries = chapters.map((ch, i) => {
       const startPage = runningPage;
       const contentLen = (ch.content || '').length;
-      const chapterHeadingChars = 200; // approx space for chapter title area
-      const totalChars = contentLen + chapterHeadingChars;
-      const numPages = Math.max(1, Math.ceil(totalChars / CHARS_PER_PAGE));
+      const numPages = Math.max(1, Math.ceil((contentLen + 200) / CHARS_PER_PAGE));
       runningPage += numPages;
       return { ch, i, startPage };
     });
+
+    const styleClass = tocStyle === 'modern' ? 'toc-modern' : tocStyle === 'minimal' ? 'toc-minimal' : '';
+    const tocTitleText = tocStyle === 'minimal' ? 'CONTENTS' : 'สารบัญ';
+
     let entries = tocEntries.map(({ ch, i, startPage }) => `
-      <div class="toc-entry" onclick="jumpToChapterInPreview(${i})" title="คลิกเพื่อไปบทที่ ${i+1}">
+      <div class="toc-entry" onclick="jumpToChapterInPreview(${i})" title="ไปบทที่ ${i+1}">
         <span class="toc-ch">บทที่ ${i+1}</span>
         <span class="toc-name">${ch.title || 'บทที่ '+(i+1)}<span class="toc-link-badge">↗</span></span>
         <span class="toc-dots"></span>
         <span class="toc-pg">${startPage}</span>
       </div>
     `).join('');
+
     insertSpecialPage(`
       <div class="page-label">สารบัญ</div>
-      <div class="page page-inner page-toc">
+      <div class="page page-inner page-toc ${styleClass}">
         <div class="page-header"><span></span><span></span></div>
-        <div class="toc-title">สารบัญ</div>
+        <div class="toc-title">${tocTitleText}</div>
         ${entries}
+        ${showPageNum ? `<div class="page-number" style="font-size:${pageNumSize}px">${formatPageNumAdvanced(2)}</div>` : ''}
       </div>
     `);
   }
-  // Refresh view after special pages updated
+
+  // Refresh view
   setTimeout(() => applyViewMode(), 0);
 
-  // Render custom special pages
+  // Render custom special pages (editable)
   customSpecialPages.forEach(csp => {
     const paras = csp.content.split('\n').filter(p => p.trim()).map(p => `<p style="margin-bottom:1em">${p}</p>`).join('');
     const cspKey = csp.id + '_0';
-    insertSpecialPage(`
+    const wrap = insertSpecialPage(`
       <div class="page-label">${csp.title}</div>
       <div class="page page-inner page-preface" style="position:relative" data-free-img-key="${cspKey}">
-        <div class="preface-title" style="position:relative;z-index:2">${csp.title}</div>
-        <div class="preface-body" style="position:relative;z-index:2">${paras || '<p style="color:#ccc;font-style:italic">เขียนเนื้อหาในแผงซ้าย...</p>'}</div>
+        <div class="preface-title special-editable" contenteditable="true" spellcheck="false"
+          data-csp-id="${csp.id}" data-csp-field="title" data-ph="หัวข้อ"
+          style="outline:none;cursor:text;position:relative;z-index:2">${csp.title}</div>
+        <div class="preface-body special-editable" contenteditable="true" spellcheck="false"
+          data-csp-id="${csp.id}" data-csp-field="content" data-ph="คลิกเพื่อพิมพ์..."
+          style="outline:none;cursor:text;position:relative;z-index:2">${paras || '<p style="color:#ccc;font-style:italic">คลิกเพื่อพิมพ์...</p>'}</div>
       </div>
     `);
-    // Restore free images on this custom page
+    // Sync custom page editable
+    wrap.querySelectorAll('[data-csp-id]').forEach(el => {
+      const field = el.dataset.cspField;
+      el.addEventListener('input', () => {
+        const c = customSpecialPages.find(x => x.id === csp.id);
+        if (c) c[field] = el.innerText;
+        // sync sidebar input if exists
+        const sideInp = document.querySelector(`[data-csp-sidebar="${csp.id}-${field}"]`);
+        if (sideInp) sideInp.value = el.innerText;
+      });
+      el.addEventListener('focus', () => { el.style.outline = '1.5px dashed rgba(139,69,19,0.45)'; });
+      el.addEventListener('blur',  () => { el.style.outline = 'none'; });
+    });
     if (!freeImages[cspKey]) freeImages[cspKey] = [];
     const pageEl = document.querySelector(`[data-free-img-key="${cspKey}"]`);
     if (pageEl) {
@@ -7951,20 +8203,7 @@ const SC_SYSTEM = `คุณคือบรรณาธิการภาษา�
 ถ้าไม่พบผิด ตอบ: []`;
 
 async function callClaudeSpell(text) {
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      model: 'claude-sonnet-4-20250514',
-      max_tokens: 1000,
-      system: SC_SYSTEM,
-      messages: [{ role: 'user', content: text }]
-    })
-  });
-  if (!res.ok) throw new Error('API ' + res.status);
-  const d = await res.json();
-  const raw = (d.content?.[0]?.text || '[]').replace(/```json|```/g, '').trim();
-  try { return JSON.parse(raw); } catch { return []; }
+  return await callAI(SC_SYSTEM, text);
 }
 
 function scChunks(text, size = 3000) {
@@ -8046,6 +8285,296 @@ async function runSpellCheck() {
     ? `<span style="color:#10b981">✅ ไม่พบข้อผิดพลาดใน ${label}</span>`
     : `<strong>พบ ${allErrors.length} รายการ</strong> ใน ${label}`;
 }
+
+// ─── AI Features ────────────────────────────────────────────────────────────
+
+const AI_KEY_LS = 'novelforge_ai_key';
+const AI_PROVIDER_LS = 'novelforge_ai_provider'; // 'gemini' | 'claude'
+let aiCurrentFeature = null;
+let aiLastResult = '';
+
+// ── Provider management ──
+function aiLoadProvider() {
+  try { return localStorage.getItem(AI_PROVIDER_LS) || 'gemini'; } catch { return 'gemini'; }
+}
+function aiSaveProvider(v) {
+  try { localStorage.setItem(AI_PROVIDER_LS, v); } catch {}
+}
+
+// ── Key management ──
+function aiLoadKey() {
+  try { return localStorage.getItem(AI_KEY_LS) || ''; } catch { return ''; }
+}
+function aiSaveKey(v) {
+  try { if (v.trim()) localStorage.setItem(AI_KEY_LS, v.trim()); else localStorage.removeItem(AI_KEY_LS); } catch {}
+}
+function aiClearKey() {
+  try { localStorage.removeItem(AI_KEY_LS); } catch {}
+  const inp = document.getElementById('ai-api-key');
+  if (inp) inp.value = '';
+  showToast('🗑 ลบ API Key แล้ว');
+}
+function aiToggleKeyVisible() {
+  const inp = document.getElementById('ai-api-key');
+  if (inp) inp.type = inp.type === 'password' ? 'text' : 'password';
+}
+function aiSaveKeyModal() {
+  const v = document.getElementById('ai-key-modal-input')?.value?.trim();
+  if (!v) return;
+  const provider = document.getElementById('ai-provider-select')?.value || 'gemini';
+  aiSaveProvider(provider);
+  aiSaveKey(v);
+  const inp = document.getElementById('ai-api-key');
+  if (inp) inp.value = v;
+  document.getElementById('ai-key-modal').style.display = 'none';
+  showToast('✅ บันทึก API Key แล้ว (' + (provider === 'gemini' ? 'Gemini' : 'Claude') + ')');
+  aiUpdateProviderUI();
+}
+
+function aiModalSelectProvider(provider) {
+  document.getElementById('ai-provider-select').value = provider;
+  const gTab = document.getElementById('ai-tab-gemini');
+  const cTab = document.getElementById('ai-tab-claude');
+  const gGuide = document.getElementById('ai-guide-gemini');
+  const cGuide = document.getElementById('ai-guide-claude');
+  const inp = document.getElementById('ai-key-modal-input');
+  if (provider === 'gemini') {
+    gTab.style.borderColor = '#1a73e8'; gTab.style.background = '#e8f0fe'; gTab.style.color = '#1a73e8';
+    cTab.style.borderColor = 'var(--border)'; cTab.style.background = 'var(--panel-bg)'; cTab.style.color = 'var(--ink-muted)';
+    gGuide.style.display = 'block'; cGuide.style.display = 'none';
+    if (inp) inp.placeholder = 'AIza...';
+  } else {
+    cTab.style.borderColor = 'var(--accent)'; cTab.style.background = '#fef9f0'; cTab.style.color = 'var(--accent)';
+    gTab.style.borderColor = 'var(--border)'; gTab.style.background = 'var(--panel-bg)'; gTab.style.color = 'var(--ink-muted)';
+    cGuide.style.display = 'block'; gGuide.style.display = 'none';
+    if (inp) inp.placeholder = 'sk-ant-...';
+  }
+}
+
+function aiUpdateProviderUI() {
+  const provider = aiLoadProvider();
+  const badge = document.getElementById('ai-provider-badge');
+  if (badge) {
+    badge.textContent = provider === 'gemini' ? '✦ Gemini (ฟรี)' : '◆ Claude';
+    badge.style.color = provider === 'gemini' ? '#1a73e8' : '#c9a227';
+  }
+  const sel = document.getElementById('ai-provider-select');
+  if (sel) sel.value = provider;
+  // update placeholder
+  const inp = document.getElementById('ai-api-key');
+  if (inp) inp.placeholder = provider === 'gemini' ? 'AIza...' : 'sk-ant-...';
+  const mInp = document.getElementById('ai-key-modal-input');
+  if (mInp) mInp.placeholder = provider === 'gemini' ? 'AIza...' : 'sk-ant-...';
+}
+
+// Load key + provider on init
+(function() {
+  const k = aiLoadKey();
+  const inp = document.getElementById('ai-api-key');
+  if (inp && k) inp.value = k;
+  aiUpdateProviderUI();
+})();
+
+// ── Unified API call ──
+async function callAI(systemPrompt, userContent) {
+  const key = aiLoadKey();
+  if (!key) throw new Error('ไม่พบ API Key — ไปที่แท็บ 🤖 AI เพื่อใส่ key');
+  const provider = aiLoadProvider();
+
+  if (provider === 'gemini') {
+    // Google Gemini API (ฟรี quota สูง)
+    const model = 'gemini-2.0-flash';
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`;
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        system_instruction: { parts: [{ text: systemPrompt }] },
+        contents: [{ role: 'user', parts: [{ text: userContent }] }],
+        generationConfig: { maxOutputTokens: 1500, temperature: 0.8 }
+      })
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      const msg = err?.error?.message || 'Gemini API ' + res.status;
+      if (res.status === 400 && msg.includes('API key')) throw new Error('API Key ไม่ถูกต้อง — ตรวจสอบ key จาก aistudio.google.com');
+      throw new Error(msg);
+    }
+    const d = await res.json();
+    return d?.candidates?.[0]?.content?.parts?.[0]?.text?.trim() || '';
+  } else {
+    // Anthropic Claude API
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': key,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-20250514',
+        max_tokens: 1500,
+        system: systemPrompt,
+        messages: [{ role: 'user', content: userContent }]
+      })
+    });
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}));
+      throw new Error(err?.error?.message || 'Claude API ' + res.status);
+    }
+    const d = await res.json();
+    return (d.content?.[0]?.text || '').trim();
+  }
+}
+
+// ── Get text scope ──
+function aiGetText(scope) {
+  const ch = chapters.find(c => c.id === currentChapterId);
+  const full = ch ? ch.content : '';
+  if (scope === 'selection') {
+    const sel = window.getSelection?.()?.toString?.() || '';
+    return sel.trim() || full;
+  }
+  if (scope === 'last500') return full.slice(-500);
+  return full;
+}
+
+// ── Feature launcher ──
+function aiFeature(feature) {
+  const key = aiLoadKey();
+  if (!key) {
+    const modal = document.getElementById('ai-key-modal');
+    modal.style.display = 'flex';
+    aiModalSelectProvider(aiLoadProvider());
+    return;
+  }
+  aiCurrentFeature = feature;
+  const modal = document.getElementById('ai-modal');
+  const titleEl = document.getElementById('ai-modal-title');
+  const labelEl = document.getElementById('ai-prompt-label');
+  const resultEl = document.getElementById('ai-result-text');
+
+  const cfg = {
+    continue:  { title: '✍️ ต่อเนื้อเรื่อง',     label: 'คำสั่งเพิ่มเติม (เช่น: ต่อ 2 ย่อหน้า, เพิ่มความตึงเครียด)' },
+    outline:   { title: '📋 โครงเรื่อง → เนื้อหา', label: 'วางโครงเรื่อง/bullet points ที่ต้องการแปลง' },
+    rewrite:   { title: '🎨 ปรับ Style',            label: 'คำสั่งปรับ (เช่น: ภาษาสุภาพ, ดราม่ามากขึ้น, กระชับ)' },
+    suggest:   { title: '💡 แนะนำประโยคต่อ',        label: 'บริบทเพิ่มเติม (เช่น: หลังจากนี้จะเกิดเหตุการณ์อะไร)' },
+  };
+  const c = cfg[feature] || cfg.continue;
+  titleEl.textContent = c.title;
+  labelEl.textContent = c.label;
+  resultEl.textContent = '';
+  document.getElementById('ai-btn-copy').style.display = 'none';
+  document.getElementById('ai-btn-insert').style.display = 'none';
+  document.getElementById('ai-btn-replace').style.display = 'none';
+  document.getElementById('ai-spinner').style.display = 'none';
+  document.getElementById('ai-progress-wrap').style.display = 'none';
+  document.getElementById('ai-prompt-extra').value = '';
+  modal.style.display = 'flex';
+}
+
+async function aiRun() {
+  const key = aiLoadKey();
+  if (!key) { showToast('⚠ ใส่ API Key ก่อน'); return; }
+
+  const feature = aiCurrentFeature;
+  const scope = document.getElementById('ai-scope').value;
+  const extra = document.getElementById('ai-prompt-extra').value.trim();
+  const text = aiGetText(scope);
+  if (!text.trim() && feature !== 'outline') { showToast('⚠ ไม่มีข้อความในบทปัจจุบัน'); return; }
+
+  const runBtn = document.getElementById('ai-run-btn');
+  const spinner = document.getElementById('ai-spinner');
+  const progressWrap = document.getElementById('ai-progress-wrap');
+  const progressBar = document.getElementById('ai-progress-bar');
+  const resultEl = document.getElementById('ai-result-text');
+  const statusEl = document.getElementById('ai-status');
+
+  runBtn.disabled = true;
+  spinner.style.display = 'flex';
+  progressWrap.style.display = 'block';
+  progressBar.style.width = '30%';
+  resultEl.textContent = '';
+  document.getElementById('ai-btn-copy').style.display = 'none';
+  document.getElementById('ai-btn-insert').style.display = 'none';
+  document.getElementById('ai-btn-replace').style.display = 'none';
+  statusEl.textContent = '⏳ กำลังประมวลผล...';
+
+  const prompts = {
+    continue: `คุณคือนักเขียนนิยายไทยมืออาชีพ ช่วยต่อเนื้อเรื่องต่อจากข้อความที่ให้ไว้ให้ราบรื่นและน่าสนใจ
+รักษาสไตล์การเขียนและน้ำเสียงของผู้แต่งเดิม ตอบเป็นเนื้อหาต่อเนื่องเท่านั้น ไม่มีคำอธิบายเพิ่ม
+${extra ? `คำสั่งเพิ่มเติม: ${extra}` : ''}`,
+
+    outline: `คุณคือนักเขียนนิยายไทยมืออาชีพ แปลงโครงเรื่องหรือ bullet points ที่ให้ไว้ให้เป็นเนื้อหานิยายที่อ่านแล้วลื่นไหล
+เขียนเป็นร้อยแก้วที่สละสลวย มีบรรยากาศ มีอารมณ์ความรู้สึก ตอบเป็นเนื้อหาเท่านั้น
+${extra ? `เนื้อหาพิเศษ: ${extra}` : ''}`,
+
+    rewrite: `คุณคือบรรณาธิการนิยายไทยมืออาชีพ ปรับแต่งข้อความที่ให้ไว้ให้ดีขึ้น
+${extra ? `ให้ปรับตามนี้: ${extra}` : 'ปรับให้สละสลวย ลื่นไหล อ่านง่ายขึ้น โดยรักษาโครงเรื่องและความหมายเดิม'}
+ตอบเฉพาะข้อความที่ปรับแล้วเท่านั้น`,
+
+    suggest: `คุณคือนักเขียนนิยายไทยมืออาชีพ อ่านข้อความที่ให้ไว้แล้วแนะนำ 3 ตัวเลือกประโยคหรือย่อหน้าถัดไป
+แต่ละตัวเลือกควรนำเรื่องไปในทิศทางที่ต่างกัน ใส่หัวข้อ "ตัวเลือกที่ 1/2/3:" ก่อนแต่ละอัน
+${extra ? `บริบท: ${extra}` : ''}`,
+  };
+
+  const systemPrompt = prompts[feature] || prompts.continue;
+  const userContent = feature === 'outline' && extra ? extra : text;
+
+  try {
+    progressBar.style.width = '60%';
+    aiLastResult = await callAI(systemPrompt, userContent);
+    resultEl.textContent = aiLastResult;
+    progressBar.style.width = '100%';
+    setTimeout(() => { progressWrap.style.display = 'none'; }, 600);
+    document.getElementById('ai-btn-copy').style.display = 'inline-flex';
+    if (feature === 'continue' || feature === 'outline') {
+      document.getElementById('ai-btn-insert').style.display = 'inline-flex';
+    }
+    if (feature === 'rewrite') {
+      document.getElementById('ai-btn-replace').style.display = 'inline-flex';
+    }
+    statusEl.textContent = '✅ เสร็จแล้ว';
+  } catch(e) {
+    resultEl.textContent = '⚠ เกิดข้อผิดพลาด: ' + e.message;
+    statusEl.textContent = '⚠ เกิดข้อผิดพลาด';
+    progressWrap.style.display = 'none';
+  } finally {
+    runBtn.disabled = false;
+    spinner.style.display = 'none';
+  }
+}
+
+function aiCopyResult() {
+  if (!aiLastResult) return;
+  navigator.clipboard?.writeText(aiLastResult).then(() => showToast('📋 คัดลอกแล้ว')).catch(() => showToast('⚠ ไม่สามารถคัดลอกได้'));
+}
+
+function aiInsertResult() {
+  if (!aiLastResult) return;
+  const ch = chapters.find(c => c.id === currentChapterId);
+  if (!ch) { showToast('⚠ ไม่พบบทปัจจุบัน'); return; }
+  ch.content = (ch.content || '') + '\n\n' + aiLastResult;
+  pushHistory();
+  updatePreview();
+  document.getElementById('ai-modal').style.display = 'none';
+  showToast('✅ เพิ่มเนื้อหาแล้ว');
+}
+
+function aiReplaceResult() {
+  if (!aiLastResult) return;
+  const ch = chapters.find(c => c.id === currentChapterId);
+  if (!ch) { showToast('⚠ ไม่พบบทปัจจุบัน'); return; }
+  if (!confirm('แทนที่เนื้อหาทั้งหมดในบทนี้ด้วยข้อความใหม่?')) return;
+  ch.content = aiLastResult;
+  pushHistory();
+  updatePreview();
+  document.getElementById('ai-modal').style.display = 'none';
+  showToast('🔄 แทนที่เนื้อหาแล้ว');
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 
 function renderSpellResults(errors, container, summary) {
   if (errors.length === 0) {
