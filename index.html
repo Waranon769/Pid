@@ -9101,8 +9101,8 @@ async function callAI(systemPrompt, userContent) {
 
   if (provider === 'gemini') {
     // Google Gemini API (ฟรี quota สูง)
-    const model = 'gemini-1.5-flash';
-    const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`;
+    const model = 'gemini-2.0-flash';
+    const url = `https://generativelanguage.googleapis.com/v1/models/${model}:generateContent?key=${key}`;
     const res = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
