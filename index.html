@@ -1490,14 +1490,16 @@ window.__docxLoadFailed = true; // always use our own writer
     border-radius: 8px;
     box-shadow: 0 8px 32px rgba(0,0,0,0.2);
     padding: 12px;
-    width: 260px;
+    width: 270px;
+    max-height: 520px;
+    overflow-y: auto;
     font-family: 'Sarabun', sans-serif;
     display: none;
   }
   .per-page-popup.open { display: block; }
   .per-page-popup-title {
     font-size: 11px; font-weight: 700; letter-spacing: 0.1em;
-    text-transform: uppercase; color: var(--ink-muted); margin-bottom: 10px;
+    text-transform: uppercase; color: var(--ink-muted); margin-bottom: 8px;
     display: flex; justify-content: space-between; align-items: center;
   }
   .per-page-popup-title button {
@@ -3048,6 +3050,41 @@ window.__docxLoadFailed = true; // always use our own writer
             <div class="lc-info"><div class="lc-name">💙 BL Classic</div><div class="lc-desc">Sarabun น้ำเงินเข้ม สะอาด</div></div>
             <div class="lc-tag" style="background:#1e3a5f">BL</div>
           </div>
+          <div class="layout-card" id="lcard-cozy" onclick="applyLayoutCard('cozy',this)">
+            <div class="lc-preview"><div class="lc-drop" style="background:#065f46"></div><div class="lc-line" style="width:82%"></div><div class="lc-line" style="width:88%"></div></div>
+            <div class="lc-info"><div class="lc-name">☕ Cozy</div><div class="lc-desc">อบอุ่น drop cap ขอบกว้าง สบายตา</div></div>
+            <div class="lc-tag">Cozy</div>
+          </div>
+          <div class="layout-card" id="lcard-light_novel" onclick="applyLayoutCard('light_novel',this)">
+            <div class="lc-preview" style="background:#f5f3ff"><div class="lc-line" style="width:86%;background:#7c3aed"></div><div class="lc-line" style="width:80%;background:#a78bfa"></div></div>
+            <div class="lc-info"><div class="lc-name">📗 Light Novel</div><div class="lc-desc">Kanit สีม่วง ชิดซ้าย สไตล์ญี่ปุ่น</div></div>
+            <div class="lc-tag" style="background:#7c3aed">LN</div>
+          </div>
+          <div class="layout-card" id="lcard-manhwa" onclick="applyLayoutCard('manhwa',this)">
+            <div class="lc-preview" style="background:#f0f9ff"><div class="lc-line" style="width:88%;background:#0891b2"></div><div class="lc-line" style="width:84%;background:#38bdf8"></div></div>
+            <div class="lc-info"><div class="lc-name">📺 Manhwa</div><div class="lc-desc">Mitr สีฟ้า ขอบแคบ อ่านเร็ว</div></div>
+            <div class="lc-tag" style="background:#0891b2">Manhwa</div>
+          </div>
+          <div class="layout-card" id="lcard-elegant_serif" onclick="applyLayoutCard('elegant_serif',this)">
+            <div class="lc-preview"><div class="lc-drop" style="background:#4338ca"></div><div class="lc-line" style="width:78%"></div><div class="lc-line" style="width:84%"></div></div>
+            <div class="lc-info"><div class="lc-name">✨ Elegant Serif</div><div class="lc-desc">Noto Serif กรมท่า ขอบกว้าง หรูหรา</div></div>
+            <div class="lc-tag" style="background:#1e1b4b">Serif</div>
+          </div>
+          <div class="layout-card" id="lcard-dramatic" onclick="applyLayoutCard('dramatic',this)">
+            <div class="lc-preview"><div class="lc-drop" style="background:#dc2626"></div><div class="lc-line" style="width:80%"></div><div class="lc-line" style="width:86%"></div></div>
+            <div class="lc-info"><div class="lc-name">🎭 Dramatic</div><div class="lc-desc">Noto Serif แดงเข้ม drop cap เร้าใจ</div></div>
+            <div class="lc-tag" style="background:#7f1d1d">Drama</div>
+          </div>
+          <div class="layout-card" id="lcard-academic" onclick="applyLayoutCard('academic',this)">
+            <div class="lc-preview"><div class="lc-line" style="width:84%"></div><div class="lc-line" style="width:80%"></div></div>
+            <div class="lc-info"><div class="lc-name">🎓 Academic</div><div class="lc-desc">Sarabun น้ำเงินเข้ม ขอบสมมาตร</div></div>
+            <div class="lc-tag">Acad</div>
+          </div>
+          <div class="layout-card" id="lcard-flash_fiction" onclick="applyLayoutCard('flash_fiction',this)">
+            <div class="lc-preview"><div class="lc-line" style="width:70%;margin:0 auto"></div><div class="lc-line" style="width:60%;margin:2px auto 0"></div></div>
+            <div class="lc-info"><div class="lc-name">⚡ Flash Fiction</div><div class="lc-desc">Prompt กึ่งกลาง ขอบกว้างมาก</div></div>
+            <div class="lc-tag">Flash</div>
+          </div>
         </div>
         <div style="font-size:11px;color:var(--ink-faint);line-height:1.6;padding:4px 6px;background:var(--panel-bg);border-radius:4px" id="layoutDesc">นิยายมาตรฐาน: Drop Cap, indent, justify</div>
       </div>
@@ -3652,13 +3689,22 @@ window.__docxLoadFailed = true; // always use our own writer
           </div>
           <div class="panel-section">
             <div class="panel-section-title">📋 Clipboard — วางข้อความ</div>
-            <div style="font-size:11px;color:var(--ink-muted);margin-bottom:6px">วางข้อความแล้วกำจัด formatting อัตโนมัติ</div>
-            <textarea id="clipboardPasteArea" placeholder="วาง (Ctrl+V) ข้อความที่นี่ เพื่อ strip formatting..." style="min-height:64px;font-size:12px;font-family:monospace" onpaste="handleClipboardPaste(event,this)"></textarea>
+            <!-- Paste mode toggle -->
+            <div style="display:flex;gap:4px;margin-bottom:8px;background:var(--panel-bg);border-radius:6px;padding:4px">
+              <button id="pasteMode-preserve" class="rb-text active" onclick="setPasteMode('preserve',this)" style="flex:1;font-size:10px;padding:4px 6px" title="คงรูปแบบ bold/italic จาก Word">
+                📄 คงรูปแบบ
+              </button>
+              <button id="pasteMode-strip" class="rb-text" onclick="setPasteMode('strip',this)" style="flex:1;font-size:10px;padding:4px 6px" title="ล้าง formatting ทั้งหมด — ข้อความเปล่า">
+                🧹 ล้าง Fmt
+              </button>
+            </div>
+            <div id="pasteModeHint" style="font-size:10px;color:var(--ink-muted);margin-bottom:6px;line-height:1.5">📄 <b>คงรูปแบบ</b>: รักษา **bold**, _italic_, __underline__ จาก Word/Doc</div>
+            <textarea id="clipboardPasteArea" placeholder="วาง (Ctrl+V) ข้อความที่นี่..." style="min-height:64px;font-size:12px;font-family:monospace" onpaste="handleClipboardPaste(event,this)"></textarea>
             <div style="display:flex;gap:5px;margin-top:4px">
               <button class="btn btn-ghost" style="flex:1;justify-content:center;font-size:11px" onclick="stripAndInsert()">✓ Insert ลงบท</button>
               <button class="btn btn-ghost" style="padding:4px 8px;font-size:11px" onclick="document.getElementById('clipboardPasteArea').value=''">✕</button>
             </div>
-            <div style="font-size:10px;color:var(--ink-faint);margin-top:4px">💡 ประวัติ Clipboard (กด Insert เพื่อใส่)</div>
+            <div style="font-size:10px;color:var(--ink-faint);margin-top:4px">💡 ประวัติ Clipboard (คลิกเพื่อใส่)</div>
             <div class="clip-history" id="clipHistory">
               <div class="clip-item" style="color:var(--ink-faint);font-style:italic">ยังไม่มีประวัติ...</div>
             </div>
@@ -3792,9 +3838,16 @@ window.__docxLoadFailed = true; // always use our own writer
 <!-- Per-page layout popup -->
 <div class="per-page-popup" id="perPagePopup">
   <div class="per-page-popup-title">
-    Pattern หน้านี้
+    Layout Pattern
     <button onclick="closePerPagePopup()">×</button>
   </div>
+  <!-- Scope toggle: หน้านี้ / ทั้งหมด -->
+  <div style="display:flex;gap:4px;margin-bottom:8px;padding:0 2px">
+    <button id="ppscope-page" class="rb-text active" onclick="setPerPageScope('page',this)" style="flex:1;font-size:10px;padding:4px 6px" title="ใช้กับหน้านี้เท่านั้น">📄 เฉพาะหน้านี้</button>
+    <button id="ppscope-chapter" class="rb-text" onclick="setPerPageScope('chapter',this)" style="flex:1;font-size:10px;padding:4px 6px" title="ใช้กับบทนี้ทุกหน้า">📖 ทั้งบท</button>
+    <button id="ppscope-all" class="rb-text" onclick="setPerPageScope('all',this)" style="flex:1;font-size:10px;padding:4px 6px" title="ใช้กับทุกบท ทุกหน้า">📚 ทั้งหมด</button>
+  </div>
+  <div id="ppScopeHint" style="font-size:10px;color:var(--ink-muted);margin-bottom:8px;padding:0 2px">📄 ใช้กับหน้านี้เท่านั้น</div>
   <div class="layout-cards">
     <div class="layout-card" onclick="applyPerPageLayout('novel',this)"><div class="lc-preview"><div class="lc-drop"></div><div class="lc-line" style="width:80%"></div><div class="lc-line" style="width:90%"></div></div><div class="lc-info"><div class="lc-name">📖 Thai Classic</div></div></div>
     <div class="layout-card" onclick="applyPerPageLayout('romance',this)"><div class="lc-preview" style="--accent:#c0696e"><div class="lc-drop" style="background:#c0696e"></div><div class="lc-line" style="width:80%"></div><div class="lc-line" style="width:88%"></div></div><div class="lc-info"><div class="lc-name">🌸 Light Romance</div></div></div>
@@ -3804,7 +3857,15 @@ window.__docxLoadFailed = true; // always use our own writer
     <div class="layout-card" onclick="applyPerPageLayout('scifi',this)"><div class="lc-preview"><div class="lc-line" style="width:90%;background:#7090b0"></div><div class="lc-line" style="width:84%;background:#7090b0"></div></div><div class="lc-info"><div class="lc-name">🚀 Sci-Fi</div></div></div>
     <div class="layout-card" onclick="applyPerPageLayout('dialogue',this)"><div class="lc-preview"><div class="lc-line" style="width:60%"></div><div class="lc-line" style="width:75%;margin-left:4px"></div></div><div class="lc-info"><div class="lc-name">💬 Dialogue</div></div></div>
     <div class="layout-card" onclick="applyPerPageLayout('poetry',this)"><div class="lc-preview"><div class="lc-line" style="width:65%;margin:0 auto"></div><div class="lc-line" style="width:55%;margin:2px auto 0"></div></div><div class="lc-info"><div class="lc-name">🌺 Poetry</div></div></div>
+    <div class="layout-card" onclick="applyPerPageLayout('cozy',this)"><div class="lc-preview"><div class="lc-drop" style="background:#065f46"></div><div class="lc-line" style="width:82%"></div><div class="lc-line" style="width:88%"></div></div><div class="lc-info"><div class="lc-name">☕ Cozy</div></div></div>
+    <div class="layout-card" onclick="applyPerPageLayout('light_novel',this)"><div class="lc-preview"><div class="lc-line" style="width:86%;background:#a78bfa"></div><div class="lc-line" style="width:80%;background:#a78bfa"></div></div><div class="lc-info"><div class="lc-name">📗 Light Novel</div></div></div>
+    <div class="layout-card" onclick="applyPerPageLayout('manhwa',this)"><div class="lc-preview"><div class="lc-line" style="width:88%;background:#38bdf8"></div><div class="lc-line" style="width:84%;background:#38bdf8"></div></div><div class="lc-info"><div class="lc-name">📺 Manhwa</div></div></div>
+    <div class="layout-card" onclick="applyPerPageLayout('elegant_serif',this)"><div class="lc-preview"><div class="lc-drop" style="background:#4338ca"></div><div class="lc-line" style="width:78%"></div><div class="lc-line" style="width:84%"></div></div><div class="lc-info"><div class="lc-name">✨ Elegant Serif</div></div></div>
+    <div class="layout-card" onclick="applyPerPageLayout('dramatic',this)"><div class="lc-preview"><div class="lc-drop" style="background:#dc2626"></div><div class="lc-line" style="width:80%"></div><div class="lc-line" style="width:86%"></div></div><div class="lc-info"><div class="lc-name">🎭 Dramatic</div></div></div>
+    <div class="layout-card" onclick="applyPerPageLayout('academic',this)"><div class="lc-preview"><div class="lc-line" style="width:84%"></div><div class="lc-line" style="width:80%"></div></div><div class="lc-info"><div class="lc-name">🎓 Academic</div></div></div>
+    <div class="layout-card" onclick="applyPerPageLayout('flash_fiction',this)"><div class="lc-preview"><div class="lc-line" style="width:70%;margin:0 auto"></div><div class="lc-line" style="width:60%;margin:2px auto 0"></div></div><div class="lc-info"><div class="lc-name">⚡ Flash Fiction</div></div></div>
   </div>
+  <button onclick="clearPerPageLayout()" style="width:100%;padding:5px;background:var(--panel-bg);border:1px solid var(--border);border-radius:4px;font-size:11px;color:#c0392b;cursor:pointer;font-family:'Sarabun',sans-serif;margin-top:2px">✕ ล้าง Layout ที่ตั้งไว้</button>
 </div>
 
 <!-- Free image drop input (hidden) -->
@@ -3823,8 +3884,8 @@ window.__docxLoadFailed = true; // always use our own writer
   <button class="ifb-btn" title="เน้นสำคัญ (Highlight)" onmousedown="event.preventDefault();applyInlineFmt('highlight')">✦</button>
   <button class="ifb-btn" title="คำสั่ง/โค้ด" onmousedown="event.preventDefault();applyInlineFmt('cmd')">[ ]</button>
   <div class="ifb-sep"></div>
-  <input class="ifb-size" type="number" id="ifbSize" value="15" min="8" max="36" title="ขนาดตัวอักษร (px)" onkeydown="if(event.key==='Enter'){event.preventDefault();applyInlineFmt('size');}">
-  <button class="ifb-btn" title="ใช้ขนาดนี้กับข้อความที่เลือก" onmousedown="event.preventDefault();applyInlineFmt('size')" style="font-size:10px;background:rgba(139,69,19,0.3);color:#f0c080">px✓</button>
+  <input class="ifb-size" type="number" id="ifbSize" value="15" min="8" max="36" title="ขนาดตัวอักษร (px)" onkeydown="if(event.key==='Enter'){event.preventDefault();_savedSel=window.getSelection()&&window.getSelection().rangeCount?window.getSelection().getRangeAt(0).cloneRange():null;applyInlineFmt('size');}">
+  <button class="ifb-btn" title="ใช้ขนาดนี้กับข้อความที่เลือก" onmousedown="event.preventDefault();_savedSel=window.getSelection()&&window.getSelection().rangeCount?window.getSelection().getRangeAt(0).cloneRange():null;" onclick="applyInlineFmt('size')" style="font-size:10px;background:rgba(139,69,19,0.3);color:#f0c080">px✓</button>
   <div class="ifb-sep"></div>
   <label title="เลือกสีตัวอักษร" style="cursor:pointer;display:flex;align-items:center;gap:3px">
     <input type="color" id="ifbColor" value="#8b4513" style="display:none" oninput="document.getElementById('ifbColorSwatch').style.background=this.value">
@@ -4871,7 +4932,17 @@ function weOnInput() {
 // Apply rich-text format to current selection
 function weFormat(type) {
   // Work on whichever contenteditable has active selection: chapterEditor OR page-body
-  const sel = window.getSelection();
+  let sel = window.getSelection();
+
+  // For 'size' and 'color': clicking the button can clear the selection.
+  // Restore from _savedSel if needed.
+  if ((type === 'size' || type === 'color') && window._savedSel) {
+    try {
+      sel.removeAllRanges();
+      sel.addRange(window._savedSel);
+    } catch(e) {}
+  }
+
   if (!sel || sel.rangeCount === 0 || sel.isCollapsed) {
     showToast('กรุณาคลุมข้อความก่อน'); return;
   }
@@ -4921,9 +4992,21 @@ function weFormat(type) {
     }
     case 'size': {
       const sz = parseInt(document.getElementById('ifbSize')?.value) || 15;
-      node = document.createElement('span');
-      node.style.fontSize = sz + 'px';
-      break;
+      // Use a robust approach: wrap with span but handle cross-element selections properly
+      const frag = range.extractContents();
+      const wrapper = document.createElement('span');
+      wrapper.style.fontSize = sz + 'px';
+      wrapper.appendChild(frag);
+      range.insertNode(wrapper);
+      // Collapse selection to end of inserted node
+      range.setStartAfter(wrapper);
+      range.collapse(true);
+      sel.removeAllRanges();
+      sel.addRange(range);
+      if (inPageBody) syncPageBodyToChapter(pageBodyEl, pageBodyEl.dataset.chId);
+      else weOnInput();
+      hideInlineFmtBar();
+      return;
     }
     case 'quote': {
       node = document.createElement('span');
@@ -5042,21 +5125,22 @@ function weFormatSize(size) {
   const sz = parseInt(size);
   if (!sz || sz < 6) return;
   const sel = window.getSelection();
-  if (!sel || sel.isCollapsed) return;
+  if (!sel || sel.isCollapsed) { showToast('กรุณาคลุมข้อความก่อน'); return; }
   const anchorNode = sel.anchorNode;
   const ed = weGetEditor();
   const inEditor   = ed && ed.contains(anchorNode);
   const pageBodyEl = anchorNode?.parentElement?.closest('.page-body');
-  if (!inEditor && !pageBodyEl) return;
+  if (!inEditor && !pageBodyEl) { showToast('กรุณาคลุมข้อความในหน้าหรือในแผงแก้ไขก่อน'); return; }
   const range = sel.getRangeAt(0);
-  const node = document.createElement('span');
-  node.style.fontSize = sz + 'px';
-  try { range.surroundContents(node); } catch(e) {
-    const frag = range.extractContents();
-    node.appendChild(frag);
-    range.insertNode(node);
-  }
+  const frag = range.extractContents();
+  const wrapper = document.createElement('span');
+  wrapper.style.fontSize = sz + 'px';
+  wrapper.appendChild(frag);
+  range.insertNode(wrapper);
+  range.setStartAfter(wrapper);
+  range.collapse(true);
   sel.removeAllRanges();
+  sel.addRange(range);
   if (pageBodyEl) syncPageBodyToChapter(pageBodyEl, pageBodyEl.dataset.chId);
   else weOnInput();
 }
@@ -5626,24 +5710,62 @@ function renderChapterPages() {
     return bodyHtml;
   }
 
-  // ── Helper: estimate height of a paragraph in pixels ──
-  function estimateParaHeight(text, contentW, pageFs, pageLh) {
-    // Strip markup tags for length estimation
-    const plain = text.replace(/<[^>]+>/g, '').replace(/\*\*(.+?)\*\*/g,'$1').replace(/_(.+?)_/g,'$1').replace(/==(.+?)==/g,'$1').replace(/<[^>]*>/g,'');
-    const charCount = plain.length || 1;
-    // Thai chars average ~0.55–0.58 of fontSize wide (narrower than Latin)
-    // Using 0.57 as empirical blended factor for Thai prose
-    const charsPerLine = Math.max(1, Math.floor(contentW / (pageFs * 0.57)));
-    const lines = Math.max(1, Math.ceil(charCount / charsPerLine));
-    const lineHeightPx = pageFs * pageLh;
-    // paragraph margin-bottom = 0.35em (matches CSS .page-body p)
-    return lines * lineHeightPx + pageFs * 0.35;
+  // ── DOM-based paragraph height probe (accurate Thai text measurement) ──
+  // สร้าง hidden probe element ครั้งเดียวต่อ render cycle เพื่อวัดความสูงจริงของแต่ละย่อหน้า
+  let _probeEl = null;
+  function _getProbe(contentW, pageFs, pageLh, pageAlign, pageFont) {
+    if (!_probeEl) {
+      _probeEl = document.createElement('div');
+      _probeEl.style.cssText = [
+        'position:absolute', 'visibility:hidden', 'pointer-events:none',
+        'z-index:-9999', 'top:-9999px', 'left:-9999px'
+      ].join(';');
+      document.body.appendChild(_probeEl);
+    }
+    _probeEl.style.width     = contentW + 'px';
+    _probeEl.style.fontSize  = pageFs + 'px';
+    _probeEl.style.lineHeight = pageLh;
+    _probeEl.style.textAlign = pageAlign || 'justify';
+    _probeEl.style.fontFamily = `'${pageFont}', sans-serif`;
+    _probeEl.style.padding   = '0';
+    _probeEl.style.margin    = '0';
+    _probeEl.style.wordBreak = 'break-word';
+    _probeEl.style.overflowWrap = 'break-word';
+    return _probeEl;
+  }
+
+  // วัดความสูงย่อหน้าจริงจาก DOM — แม่นยำสำหรับภาษาไทย
+  function measureParaHeight(text, contentW, pageFs, pageLh, pageAlign, pageFont) {
+    const probe = _getProbe(contentW, pageFs, pageLh, pageAlign, pageFont);
+    // สร้าง <p> เดียวแบบเดียวกับที่ render จริง
+    probe.innerHTML = `<p style="margin:0 0 ${(pageFs*0.35).toFixed(1)}px;padding:0">${parseRichText(text)}</p>`;
+    return probe.offsetHeight + 2; // +2px safety
+  }
+
+  // วัด header บทด้วย DOM จริง (chapter-num + title + divider)
+  function measureChapterHeaderH(ch, pageMv, pageMh, pageFs, pageLh, pageAlign, pageFont, divHTML) {
+    const probe = document.createElement('div');
+    probe.style.cssText = [
+      'position:absolute','visibility:hidden','pointer-events:none',
+      'z-index:-9999','top:-9999px','left:-9999px',
+      `width:${559 - 2*pageMh}px`,
+      `font-size:${pageFs}px`,
+      `font-family:'${pageFont}',sans-serif`
+    ].join(';');
+    probe.innerHTML = `
+      <div style="font-size:11px;font-weight:700;letter-spacing:0.15em;text-transform:uppercase;margin-bottom:24px">บทที่ X</div>
+      <div style="font-family:'Playfair Display',serif;font-size:22px;font-weight:700;margin-bottom:6px">${ch.title||'บท'}</div>
+      ${divHTML}
+    `;
+    document.body.appendChild(probe);
+    const h = probe.offsetHeight;
+    document.body.removeChild(probe);
+    return h + 16; // +16px buffer
   }
 
   chapters.forEach((ch, ci) => {
     const rawParagraphs = ch.content.split('\n').filter(p => p.trim());
 
-    // ── Fast estimation-based page splitting ──
     const PAGE_H = 794;
     const headerH = showHeader ? 32 : 0;
     const footerH = showPageNum ? 32 : 0;
@@ -5651,14 +5773,16 @@ function renderChapterPages() {
     const pageGroups = [[]];
     let usedH = 0;
 
-    // Reserve height for chapter header on first page
-    const chapterHeaderH = (function() {
-      // .page-chapter-num: 11px * ~1.5lh + margin-bottom:24px ≈ 41px
-      // .page-chapter-title: 22px * ~1.4lh + margin-bottom:6px ≈ 37px
-      // .chapter-divider: 2px + margin-bottom:28px ≈ 30px
-      // total ≈ 108px; add small buffer for font rendering variance
-      return 41 + 37 + 30 + 8; // = 116px
-    })();
+    // วัด chapter header จริง (ครั้งแรกเท่านั้น)
+    const _p0Override = perPageLayouts[`${ch.id}_0`];
+    const _p0Preset   = _p0Override ? layoutPresets[_p0Override] : null;
+    const _p0Mv = _p0Preset ? _p0Preset.marginV : mv;
+    const _p0Mh = _p0Preset ? _p0Preset.marginH : mh;
+    const _p0Fs = _p0Preset ? _p0Preset.fontSize : fs;
+    const _p0Lh = _p0Preset ? _p0Preset.lineHeight / 100 : lh;
+    const _p0Al = _p0Preset ? _p0Preset.textAlign : textAlign;
+    const _p0Fn = _p0Preset ? _p0Preset.font : bodyFont;
+    const chapterHeaderH = measureChapterHeaderH(ch, _p0Mv, _p0Mh, _p0Fs, _p0Lh, _p0Al, _p0Fn, dividerHTML);
 
     rawParagraphs.forEach((p) => {
       if (p.trim() === '[PAGE_BREAK]') {
@@ -5678,15 +5802,17 @@ function renderChapterPages() {
       const pageMh = overridePreset ? overridePreset.marginH : mh;
       const pageFs = overridePreset ? overridePreset.fontSize : fs;
       const pageLh = overridePreset ? overridePreset.lineHeight / 100 : lh;
+      const pageAl = overridePreset ? overridePreset.textAlign : textAlign;
+      const pageFn = overridePreset ? overridePreset.font : bodyFont;
 
       const contentW = 559 - 2 * pageMh;
       const availH = PAGE_H - pageMv - (pageMv + 8) - headerH - footerH
-                     - (isFirstPage ? chapterHeaderH : 0);
+                     - (isFirstPage ? chapterHeaderH : 0)
+                     - 8; // 8px safety buffer
 
-      const paraH = estimateParaHeight(p, contentW, pageFs, pageLh);
+      const paraH = measureParaHeight(p, contentW, pageFs, pageLh, pageAl, pageFn);
 
       if (usedH + paraH > availH && pageGroups[curPgIdx].length > 0) {
-        // Start new page
         pageGroups.push([p]);
         usedH = paraH;
       } else {
@@ -5883,6 +6009,11 @@ function renderChapterPages() {
   });
 
   // After rendering, refresh view mode + apply borders
+  // Clean up the DOM probe element used for height measurement
+  if (_probeEl && _probeEl.parentNode) {
+    _probeEl.parentNode.removeChild(_probeEl);
+    _probeEl = null;
+  }
   setTimeout(() => {
     applyViewMode();
     const total = document.getElementById('zoomWrap').querySelectorAll('.page').length;
@@ -6496,6 +6627,14 @@ const layoutPresets = {
   bl_classic:{ fontSize:14, lineHeight:200, marginV:56, marginH:52, textAlign:'justify', dropCap:false, font:'Sarabun',        accent:'#1e3a5f', accentLight:'#2563eb', desc:'BL Classic: สีน้ำเงินเข้ม ฟอนต์สะอาด' },
   wuxia:     { fontSize:14, lineHeight:180, marginV:52, marginH:48, textAlign:'justify', dropCap:false, font:'Noto Serif Thai', accent:'#431407', accentLight:'#9a3412', desc:'กำลังภายใน: Noto Serif แดงเลือดมังกร หนักแน่น' },
   isekai:    { fontSize:14, lineHeight:190, marginV:54, marginH:50, textAlign:'left',    dropCap:false, font:'Kanit',          accent:'#1d4ed8', accentLight:'#3b82f6', desc:'Isekai: Kanit ฟ้าสว่าง ชิดซ้าย อนิเมะสไตล์' },
+  // ── ชุดใหม่ ──
+  cozy:      { fontSize:15, lineHeight:200, marginV:58, marginH:56, textAlign:'justify', dropCap:true,  font:'Sarabun',        accent:'#065f46', accentLight:'#059669', desc:'Cozy: บรรยากาศอบอุ่น ขอบกว้าง drop cap สบายตา' },
+  light_novel:{ fontSize:14, lineHeight:195, marginV:52, marginH:48, textAlign:'left',   dropCap:false, font:'Kanit',          accent:'#7c3aed', accentLight:'#a78bfa', desc:'Light Novel: Kanit ชิดซ้าย อ่านเร็ว สไตล์ญี่ปุ่น' },
+  manhwa:    { fontSize:14, lineHeight:185, marginV:50, marginH:46, textAlign:'left',    dropCap:false, font:'Mitr',           accent:'#0891b2', accentLight:'#38bdf8', desc:'Manhwa: Mitr สีฟ้า ขอบแคบ อ่านเร็ว' },
+  elegant_serif:{ fontSize:15, lineHeight:205, marginV:64, marginH:62, textAlign:'justify', dropCap:true, font:'Noto Serif Thai', accent:'#1e1b4b', accentLight:'#4338ca', desc:'Elegant Serif: Noto Serif ขอบกว้าง สีกรมท่า หรูหรา' },
+  flash_fiction:{ fontSize:15, lineHeight:190, marginV:60, marginH:68, textAlign:'center',  dropCap:false, font:'Prompt',       accent:'#be185d', accentLight:'#f43f5e', desc:'Flash Fiction: Prompt กึ่งกลาง ขอบกว้างมาก สั้นกระชับ' },
+  academic:  { fontSize:14, lineHeight:175, marginV:56, marginH:56, textAlign:'justify', dropCap:false, font:'Sarabun',        accent:'#1e3a5f', accentLight:'#1d4ed8', desc:'วิชาการ: Sarabun ขอบสมมาตร บรรทัดเรียบร้อย' },
+  dramatic:  { fontSize:14, lineHeight:185, marginV:52, marginH:48, textAlign:'justify', dropCap:true,  font:'Noto Serif Thai', accent:'#7f1d1d', accentLight:'#dc2626', desc:'Dramatic: Noto Serif สีแดง drop cap เข้มข้น' },
 };
 
 function applyLayoutCard(name, cardEl) {
@@ -6618,6 +6757,8 @@ function showInlineFmtBarOnSelect(sourceEl) {
       const inEditor = ed && ed.contains(anchorNode);
       const inPageBody = anchorNode && anchorNode.parentElement && anchorNode.parentElement.closest('.page-body');
       if (!inEditor && !inPageBody) { hideInlineFmtBar(); return; }
+      // Save selection range so size/color buttons can restore it after focus shifts
+      window._savedSel = sel.rangeCount > 0 ? sel.getRangeAt(0).cloneRange() : null;
       // Position bar near selection
       const range = sel.getRangeAt(0);
       const rect = range.getBoundingClientRect();
@@ -6894,6 +7035,22 @@ function updateDropCapSize(val) {
 // ── Per-page layout overrides ──
 const perPageLayouts = {}; // key: chapterId_pageIndex -> preset name
 let _currentCtxPageKey = null;
+let _perPageScope = 'page'; // 'page' | 'chapter' | 'all'
+
+function setPerPageScope(scope, btnEl) {
+  _perPageScope = scope;
+  document.querySelectorAll('#ppscope-page,#ppscope-chapter,#ppscope-all').forEach(b => b.classList.remove('active'));
+  if (btnEl) btnEl.classList.add('active');
+  const hint = document.getElementById('ppScopeHint');
+  if (hint) {
+    const msgs = {
+      page: '📄 ใช้กับหน้านี้เท่านั้น',
+      chapter: '📖 ใช้กับทุกหน้าในบทนี้',
+      all: '📚 ใช้กับทุกบท ทุกหน้า (global)'
+    };
+    hint.textContent = msgs[scope] || '';
+  }
+}
 
 function openPerPagePopup(e, chId, pgIdx) {
   e.stopPropagation();
@@ -6908,7 +7065,7 @@ function openPerPagePopup(e, chId, pgIdx) {
   // Position near click
   let x = e.clientX + 8, y = e.clientY + 8;
   if (x + 270 > window.innerWidth) x = e.clientX - 270;
-  if (y + 360 > window.innerHeight) y = e.clientY - 360;
+  if (y + 480 > window.innerHeight) y = e.clientY - 480;
   popup.style.left = x + 'px';
   popup.style.top = y + 'px';
 }
@@ -6918,11 +7075,51 @@ function closePerPagePopup() {
 }
 
 function applyPerPageLayout(name, cardEl) {
-  if (!_currentCtxPageKey) return;
-  perPageLayouts[_currentCtxPageKey] = name;
+  if (!_currentCtxPageKey && _perPageScope === 'page') return;
+  closePerPagePopup();
+
+  if (_perPageScope === 'page') {
+    // เฉพาะหน้านี้
+    perPageLayouts[_currentCtxPageKey] = name;
+    renderChapterPages();
+    showToast('✅ ตั้ง Layout "' + name + '" สำหรับหน้านี้');
+  } else if (_perPageScope === 'chapter') {
+    // ทุกหน้าในบทนี้ — parse chId from key
+    const chId = _currentCtxPageKey ? _currentCtxPageKey.split('_')[0] : null;
+    if (!chId) return;
+    // Apply to all existing page keys of this chapter
+    Object.keys(perPageLayouts).forEach(k => {
+      if (k.startsWith(chId + '_')) delete perPageLayouts[k];
+    });
+    // Mark chapter-level: set for pages 0–99
+    for (let i = 0; i < 100; i++) {
+      perPageLayouts[`${chId}_${i}`] = name;
+    }
+    renderChapterPages();
+    showToast('✅ ตั้ง Layout "' + name + '" สำหรับทั้งบท');
+  } else if (_perPageScope === 'all') {
+    // ทุกบท ทุกหน้า → ใช้ applyLayoutCard (global)
+    applyLayoutCard(name, null);
+    // Clear all per-page overrides
+    Object.keys(perPageLayouts).forEach(k => delete perPageLayouts[k]);
+    showToast('✅ ตั้ง Layout "' + name + '" ทุกหน้า (global)');
+  }
+}
+
+function clearPerPageLayout() {
+  if (_perPageScope === 'page') {
+    if (_currentCtxPageKey) delete perPageLayouts[_currentCtxPageKey];
+    showToast('✕ ล้าง Layout หน้านี้แล้ว');
+  } else if (_perPageScope === 'chapter') {
+    const chId = _currentCtxPageKey ? _currentCtxPageKey.split('_')[0] : null;
+    if (chId) Object.keys(perPageLayouts).forEach(k => { if (k.startsWith(chId + '_')) delete perPageLayouts[k]; });
+    showToast('✕ ล้าง Layout ทั้งบทแล้ว');
+  } else if (_perPageScope === 'all') {
+    Object.keys(perPageLayouts).forEach(k => delete perPageLayouts[k]);
+    showToast('✕ ล้าง Layout ทั้งหมดแล้ว');
+  }
   closePerPagePopup();
   renderChapterPages();
-  showToast('✅ ตั้ง Pattern "' + name + '" สำหรับหน้านี้');
 }
 
 // ── Free drag images on pages ──
@@ -8864,31 +9061,98 @@ function replaceOne() {
 }
 replaceOne._done = false;
 
-// ── FEATURE 5: Clipboard / Paste history with strip formatting ──
+// ── FEATURE 5: Clipboard / Paste history with preserve/strip mode ──
 let clipboardHistory = [];
 const MAX_CLIP_HISTORY = 10;
+let _pasteMode = 'preserve'; // 'preserve' | 'strip'
+
+function setPasteMode(mode, btnEl) {
+  _pasteMode = mode;
+  document.querySelectorAll('#pasteMode-preserve,#pasteMode-strip').forEach(b => b.classList.remove('active'));
+  if (btnEl) btnEl.classList.add('active');
+  const hint = document.getElementById('pasteModeHint');
+  if (hint) {
+    if (mode === 'preserve') {
+      hint.innerHTML = '📄 <b>คงรูปแบบ</b>: รักษา **bold**, _italic_, __underline__ จาก Word/Doc';
+    } else {
+      hint.innerHTML = '🧹 <b>ล้าง Fmt</b>: ข้อความเปล่า ไม่มี formatting — สะอาดที่สุด';
+    }
+  }
+}
+
+// แปลง HTML จาก clipboard → markup string (รักษา bold/italic/underline)
+function _htmlToMarkup(html) {
+  const tmp = document.createElement('div');
+  tmp.innerHTML = html;
+  function nodeToMarkup(node) {
+    if (node.nodeType === Node.TEXT_NODE) {
+      return node.textContent;
+    }
+    const tag = node.nodeName.toUpperCase();
+    const inner = Array.from(node.childNodes).map(nodeToMarkup).join('');
+    if (tag === 'STRONG' || tag === 'B') return `**${inner}**`;
+    if (tag === 'EM' || tag === 'I') return `_${inner}_`;
+    if (tag === 'U') return `__${inner}__`;
+    if (tag === 'BR') return '\n';
+    if (tag === 'P' || tag === 'DIV' || tag === 'LI') return inner + '\n';
+    if (tag === 'H1' || tag === 'H2' || tag === 'H3') return `**${inner}**\n`;
+    if (tag === 'TABLE') {
+      // แปลงตาราง → แถวธรรมดา
+      return Array.from(node.querySelectorAll('tr')).map(r =>
+        Array.from(r.querySelectorAll('td,th')).map(c => c.textContent.trim()).join(' | ')
+      ).join('\n') + '\n';
+    }
+    return inner;
+  }
+  let result = nodeToMarkup(tmp);
+  // Clean up artifacts
+  result = result
+    .replace(/\r\n/g, '\n')
+    .replace(/\r/g, '\n')
+    .replace(/\t/g, ' ')
+    .replace(/\u00A0/g, ' ')
+    .replace(/[\u200B-\u200D\uFEFF]/g, '')
+    .replace(/ {2,}/g, ' ')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+  return result;
+}
 
 function handleClipboardPaste(event, textarea) {
   event.preventDefault();
   const clipData = event.clipboardData || window.clipboardData;
-  // Prefer plain text, stripping all formatting
-  let text = clipData.getData('text/plain');
-  if (!text) {
-    // fallback: strip HTML
+  let text = '';
+
+  if (_pasteMode === 'preserve') {
+    // ลอง HTML ก่อนเพื่อรักษา formatting
     const html = clipData.getData('text/html');
-    const tmp = document.createElement('div');
-    tmp.innerHTML = html;
-    text = tmp.innerText;
+    if (html && html.trim()) {
+      text = _htmlToMarkup(html);
+    } else {
+      text = clipData.getData('text/plain') || '';
+      text = text
+        .replace(/\r\n/g, '\n').replace(/\r/g, '\n')
+        .replace(/\t/g, ' ').replace(/\u00A0/g, ' ')
+        .replace(/[\u200B-\u200D\uFEFF]/g, '')
+        .replace(/ {2,}/g, ' ').trim();
+    }
+    showToast('📄 วางข้อความ (คงรูปแบบ) เรียบร้อย');
+  } else {
+    // Strip mode: plain text เท่านั้น
+    text = clipData.getData('text/plain');
+    if (!text) {
+      const html = clipData.getData('text/html');
+      const tmp = document.createElement('div');
+      tmp.innerHTML = html;
+      text = tmp.innerText;
+    }
+    text = text
+      .replace(/\r\n/g, '\n').replace(/\r/g, '\n')
+      .replace(/\t/g, ' ').replace(/\u00A0/g, ' ')
+      .replace(/[\u200B-\u200D\uFEFF]/g, '')
+      .replace(/ {2,}/g, ' ').trim();
+    showToast('🧹 วางข้อความ (ล้าง formatting) เรียบร้อย');
   }
-  // Clean up common Word/web artifacts
-  text = text
-    .replace(/\r\n/g, '\n')
-    .replace(/\r/g, '\n')
-    .replace(/\t/g, ' ')
-    .replace(/\u00A0/g, ' ')  // non-breaking space
-    .replace(/[\u200B-\u200D\uFEFF]/g, '') // zero-width chars
-    .replace(/ {2,}/g, ' ')   // multiple spaces → one
-    .trim();
 
   textarea.value = text;
   // Add to history
@@ -8897,7 +9161,6 @@ function handleClipboardPaste(event, textarea) {
     if (clipboardHistory.length > MAX_CLIP_HISTORY) clipboardHistory.length = MAX_CLIP_HISTORY;
     renderClipHistory();
   }
-  showToast('📋 วางข้อความ (strip formatting) เรียบร้อย');
 }
 
 function renderClipHistory() {
@@ -9188,14 +9451,19 @@ async function callAI(systemPrompt, userContent) {
 
   if (provider === 'gemini') {
     // Google Gemini API (ฟรี quota สูง)
+    // หมายเหตุ: v1 endpoint ไม่รองรับ system_instruction โดยตรง
+    // แก้โดยรวม system prompt เข้าไปใน contents เป็น turn แรกของ model
     const model = 'gemini-2.0-flash';
     const url = `https://generativelanguage.googleapis.com/v1/models/${model}:generateContent?key=${key}`;
     const res = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        system_instruction: { parts: [{ text: systemPrompt }] },
-        contents: [{ role: 'user', parts: [{ text: userContent }] }],
+        contents: [
+          { role: 'user',  parts: [{ text: systemPrompt }] },
+          { role: 'model', parts: [{ text: 'เข้าใจแล้วครับ พร้อมปฏิบัติตามคำสั่ง' }] },
+          { role: 'user',  parts: [{ text: userContent }] }
+        ],
         generationConfig: { maxOutputTokens: 1500, temperature: 0.8 }
       })
     });
